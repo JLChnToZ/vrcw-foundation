@@ -1,0 +1,18 @@
+{
+  "name": "idv.jlchntoz.vrcw-foundation",
+  "displayName": "VRCW Foundation",
+  "version": "0.0.6",
+  "unity": "2022.3",
+  "description": "Foundation framework enhances VRChat World developments with Udon(sharp).",
+  "vrchatVersion": "2022.1.1",
+  "vpmDependencies": {
+    "com.vrchat.core.vpm-resolver": "0.x.x",
+    "com.vrchat.worlds": "3.x.x"
+  },
+  "author": {
+    "name": "Jeremy Lam aka. Vistanz",
+    "email": "me@moka-rin.moe",
+    "url": "https://xtl.booth.pm"
+  },
+  "license": "MIT"
+}

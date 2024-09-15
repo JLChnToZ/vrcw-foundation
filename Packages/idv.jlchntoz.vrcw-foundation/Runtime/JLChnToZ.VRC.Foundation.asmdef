@@ -1,9 +1,12 @@
 {
-    "name": "VRChatPackageTemplate.Editor",
-    "references": [],
-    "includePlatforms": [
-        "Editor"
+    "name": "JLChnToZ.VRC.Foundation",
+    "rootNamespace": "JLChnToZ.VRC.Foundation",
+    "references": [
+        "VRC.Udon",
+        "UdonSharp.Runtime",
+        "VRC.Udon.Serialization.OdinSerializer"
     ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
