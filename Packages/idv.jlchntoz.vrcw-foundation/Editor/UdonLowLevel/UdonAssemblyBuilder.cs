@@ -8,6 +8,9 @@ using VRC.Udon.Editor;
 using VRC.Udon.EditorBindings;
 
 namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
+    /// <summary>
+    /// A builder for Udon assembly.
+    /// </summary>
     public sealed class UdonAssemblyBuilder {
         static readonly Regex autoVariableStripper = new Regex("[\\W_]+", RegexOptions.Compiled);
         static readonly object nullObj = new object();
@@ -22,24 +25,47 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
         UdonEditorInterface editorInterface;
         IUdonProgram program;
 
+        /// <summary>
+        /// The size of the assembly.
+        /// </summary>
         public uint Size => lastInstruction != null ? lastInstruction.offset + lastInstruction.Size : 0;
 
+        /// <summary>
+        /// The last emitted instruction.
+        /// </summary>
         public UdonInstruction LastInstruction => lastInstruction;
 
+        /// <summary>
+        /// Whether to perform type checking.
+        /// </summary>
         public readonly bool typeCheck;
 
+        /// <inheritdoc cref="UdonAssemblyBuilder(bool)"/>
         public UdonAssemblyBuilder() : this(true) {}
 
+        /// <summary>
+        /// Create a new Udon assembly builder.
+        /// </summary>
+        /// <param name="typeCheck">Whether to perform type checking.</param>
         public UdonAssemblyBuilder(bool typeCheck) {
             this.typeCheck = typeCheck;
         }
 
+        /// <inheritdoc cref="DefineVariable(VariableName, Type, VariableAttributes, object)"/>
+        /// <typeparam name="T">The type of the variable.</typeparam>
         public void DefineVariable<T>(
             VariableName variableName,
             VariableAttributes attributes = VariableAttributes.None,
             T value = default
         ) => DefineVariable(variableName, new VariableDefinition(typeof(T), attributes, value));
 
+        /// <summary>
+        /// Define a variable.
+        /// </summary>
+        /// <param name="variableName">The name of the variable.</param>
+        /// <param name="type">The type of the variable.</param>
+        /// <param name="attributes">The attributes of the variable.</param>
+        /// <param name="value">The value of the variable.</param>
         public void DefineVariable(
             VariableName variableName,
             Type type = null,
@@ -47,6 +73,11 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             object value = null
         ) => DefineVariable(variableName, new VariableDefinition(type, attributes, value));
 
+        /// <summary>
+        /// Define a variable.
+        /// </summary>
+        /// <param name="variableName">The name of the variable.</param>
+        /// <param name="definition">The definition of the variable.</param>
         public void DefineVariable(VariableName variableName, VariableDefinition definition) {
             if (!variableName.IsValid)
                 throw new ArgumentNullException(nameof(variableName));
@@ -70,6 +101,12 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             assembly = null;
         }
 
+        /// <summary>
+        /// Try to get a variable definition.
+        /// </summary>
+        /// <param name="variableName">The name of the variable.</param>
+        /// <param name="result">The result of the variable definition.</param>
+        /// <returns>Whether the variable definition is found.</returns>
         public bool TryGetVariable(VariableName variableName, out VariableDefinition result) {
             if (variableDefs.TryGetValue(variableName, out result)) return true;
             var fixedType = variableName.GetPredefinedType();
@@ -81,13 +118,30 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return false;
         }
 
+        /// <summary>
+        /// Define an event.
+        /// </summary>
+        /// <param name="name">The name of the event.</param>
+        /// <remarks>
+        /// This will define the next entry point to the event.
+        /// </remarks>
         public void DefineEvent(string name) => nextEntryPointName = name;
 
+        /// <summary>
+        /// Define an event.
+        /// </summary>
+        /// <param name="instruction">The existing instruction as the entry point.</param>
+        /// <param name="name">The name of the event.</param>
         public void DefineEvent(UdonInstruction instruction, string name) {
             entryPoints[instruction] = name;
             assembly = null;
         }
 
+        /// <summary>
+        /// Get a constant variable name.
+        /// </summary>
+        /// <param name="value">The value of the constant.</param>
+        /// <returns>The variable name of the constant.</returns>
         private VariableName GetConstant(object value) {
             if (value == null) value = nullObj;
             if (!constants.TryGetValue(value, out var varName)) {
@@ -112,6 +166,10 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return varName;
         }
 
+        /// <summary>
+        /// Emit an instruction.
+        /// </summary>
+        /// <param name="instruction">The instruction to emit.</param>
         public void Emit(UdonInstruction instruction) {
             if (instruction == null || instruction.next != null)
                 throw new ArgumentException("Instruction is null or already connected.");
@@ -128,24 +186,42 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             }
         }
 
+        /// <summary>
+        /// Emit a NOP instruction.
+        /// </summary>
+        /// <returns>The emitted instruction.</returns>
         public NopInstruction EmitNop() {
             var instruction = new NopInstruction();
             Emit(instruction);
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a COPY instruction.
+        /// </summary>
+        /// <returns>The emitted instruction.</returns>
         public CopyInstruction EmitCopy() {
             var instruction = new CopyInstruction();
             Emit(instruction);
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a POP instruction.
+        /// </summary>
+        /// <returns>The emitted instruction.</returns>
         public PopInstruction EmitPop() {
             var instruction = new PopInstruction();
             Emit(instruction);
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a COPY instruction.
+        /// </summary>
+        /// <param name="varFrom">The source variable.</param>
+        /// <param name="varTo">The destination variable.</param>
+        /// <returns>The emitted instruction.</returns>
         public CopyInstruction EmitCopy(object varFrom, VariableName varTo) {
             var varFromName = varFrom is VariableName name ? name.key : GetConstant(varFrom);
             EmitPush(varFromName, null);
@@ -154,18 +230,41 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return EmitCopy();
         }
 
+        /// <summary>
+        /// Emit a COPY instruction, yields current instruction offset to the destination variable.
+        /// </summary>
+        /// <param name="dest">The destination variable.</param>
+        /// <param name="relativeOffset">The relative offset to the current instruction.</param>
+        /// <returns>The emitted instruction.</returns>
         public CopyInstruction EmitCopyOffset(VariableName dest, int relativeOffset = 0) {
             const uint INSTRUCTION_SIZE = PushInstruction.SIZE * 2 + CopyInstruction.SIZE;
             if (!variableDefs.ContainsKey(dest)) DefineVariable<uint>(dest);
             return EmitCopy((uint)(INSTRUCTION_SIZE + Size + relativeOffset), dest);
         }
 
+        /// <summary>
+        /// Emit a PUSH instruction.
+        /// </summary>
+        /// <param name="parameter">The parameter to push.</param>
+        /// <returns>The emitted instruction.</returns>
         public PushInstruction EmitPush(object parameter) =>
             EmitPush(parameter is VariableName name ? name.key : GetConstant(parameter), null);
 
+        /// <summary>
+        /// Emit a PUSH instruction.
+        /// </summary>
+        /// <param name="variableName">The name of the variable to push.</param>
+        /// <returns>The emitted instruction.</returns>
         public PushInstruction EmitPush(VariableName variableName) =>
             EmitPush(variableName, null);
 
+        /// <summary>
+        /// Emit a PUSH instruction.
+        /// </summary>
+        /// <param name="variableName">The name of the variable to push.</param>
+        /// <param name="type">The expected type of the variable.</param>
+        /// <param name="strict">Whether to perform strict AOT type checking.</param>
+        /// <returns>The emitted instruction.</returns>
         private PushInstruction EmitPush(VariableName variableName, Type type, bool strict = false) {
             DoTypeCheck(variableName, type, strict);
             var instruction = new PushInstruction(variableName);
@@ -173,18 +272,36 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a JUMP instruction.
+        /// </summary>
+        /// <param name="dest">The location of the destination instruction.</param>
+        /// <returns>The emitted instruction.</returns>
         public JumpInstruction EmitJump(UdonInstruction dest) {
             var instruction = new JumpInstruction(dest);
             Emit(instruction);
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a JUMP instruction.
+        /// </summary>
+        /// <param name="dest">The location of the destination instruction.</param>
+        /// <returns>The emitted instruction.</returns>
+        /// <remarks>
+        /// If <paramref name="dest"/> is omitted, the destination will be the return address.
+        /// </remarks>
         public JumpInstruction EmitJump(uint dest = ReturnAddress) {
             var instruction = new JumpInstruction(dest);
             Emit(instruction);
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a JUMP_INDIRECT instruction.
+        /// </summary>
+        /// <param name="address">The variable stores the address of the destination instruction.</param>
+        /// <returns>The emitted instruction.</returns>
         public JumpIndirectInstruction EmitJumpIndirect(VariableName address) {
             DoTypeCheck(address, typeof(uint), true);
             var instruction = new JumpIndirectInstruction(address);
@@ -192,23 +309,45 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a JUMP_IF_FALSE instruction.
+        /// </summary>
+        /// <param name="dest">The location of the destination instruction.</param>
+        /// <returns>The emitted instruction.</returns>
         public JumpIfFalseInstruction EmitJumpIfFalse(UdonInstruction dest) {
             var instruction = new JumpIfFalseInstruction(dest);
             Emit(instruction);
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a JUMP_IF_FALSE instruction.
+        /// </summary>
+        /// <param name="dest">The location of the destination instruction.</param>
+        /// <returns>The emitted instruction.</returns>
         public JumpIfFalseInstruction EmitJumpIfFalse(uint dest = ReturnAddress) {
             var instruction = new JumpIfFalseInstruction(dest);
             Emit(instruction);
             return instruction;
         }
 
+        /// <summary>
+        /// Emit a JUMP_IF_FALSE instruction.
+        /// </summary>
+        /// <param name="paramName">The name of the parameter to check.</param>
+        /// <param name="dest">The location of the destination instruction.</param>
+        /// <returns>The emitted instruction.</returns>
         public JumpIfFalseInstruction EmitJumpIfFalse(VariableName paramName, UdonInstruction dest) {
             EmitPush(paramName, typeof(bool), true);
             return EmitJumpIfFalse(dest);
         }
 
+        /// <summary>
+        /// Emit a JUMP_IF_FALSE instruction.
+        /// </summary>
+        /// <param name="paramName">The name of the parameter to check.</param>
+        /// <param name="dest">The location of the destination instruction.</param>
+        /// <returns>The emitted instruction.</returns>
         public JumpIfFalseInstruction EmitJumpIfFalse(VariableName paramName, uint dest = ReturnAddress) {
             EmitPush(paramName, typeof(bool), true);
             return EmitJumpIfFalse(dest);
@@ -222,6 +361,14 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             } else DefineVariable(variableName, type);
         }
 
+        /// <summary>
+        /// Emit an EXTERN instruction.
+        /// </summary>
+        /// <param name="methodName">The name of the method to call.</param>
+        /// <returns>The emitted instruction.</returns>
+        /// <remarks>
+        /// This overload will not perform argument type checking.
+        /// </remarks>
         public ExternInstruction EmitExtern(string methodName) {
             if (string.IsNullOrEmpty(methodName))
                 throw new ArgumentNullException(nameof(methodName));
@@ -233,6 +380,12 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return instruction;
         }
 
+        /// <summary>
+        /// Emit an EXTERN instruction.
+        /// </summary>
+        /// <param name="methodName">The name of the method to call.</param>
+        /// <param name="parameters">The parameters to pass to the method.</param>
+        /// <returns>The emitted instruction.</returns>
         public ExternInstruction EmitExtern(string methodName, params object[] parameters) {
             if (string.IsNullOrEmpty(methodName))
                 throw new ArgumentNullException(nameof(methodName));
@@ -290,6 +443,10 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return EmitExtern(methodName);
         }
 
+        /// <summary>
+        /// Compile the assembly.
+        /// </summary>
+        /// <returns>The compiled Udon Assembly.</returns>
         public string Compile() {
             if (string.IsNullOrEmpty(assembly)) {
                 var sb = new StringBuilder();
@@ -326,6 +483,10 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return assembly;
         }
 
+        /// <summary>
+        /// Assemble the assembly.
+        /// </summary>
+        /// <returns>The assembled Udon program.</returns>
         public IUdonProgram Assemble() {
             Compile();
             editorInterface = new UdonEditorInterface(
@@ -341,6 +502,10 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return program;
         }
 
+        /// <summary>
+        /// Disassemble the program.
+        /// </summary>
+        /// <returns>The disassembled assembly.</returns>
         public string[] Disassemble() {
             if (editorInterface == null || program == null) Assemble();
             return editorInterface.DisassembleProgram(program);

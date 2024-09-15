@@ -19,6 +19,9 @@ using SemanticVersion = SemanticVersioning.Version;
 using PackageManagerPackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
+    /// <summary>
+    /// Self updater for VPM based packages.
+    /// </summary>
     public class PackageSelfUpdater {
         static GUIContent infoContent;
         static EditorI18N i18n;
@@ -27,21 +30,48 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         string availableVersion;
         bool isInstalledManually;
 
+        /// <summary>
+        /// The package name.
+        /// </summary>
         public string PackageName => packageDisplayName ?? "Unknown Package";
 
+        /// <summary>
+        /// The current version of the package.
+        /// </summary>
         public string CurrentVersion => packageVersion;
 
+        /// <summary>
+        /// The available version of the package.
+        /// </summary>
         public string AvailableVersion => availableVersion;
 
+        /// <summary>
+        /// Whether the package is installed manually, not via VPM tools such as VCC.
+        /// </summary>
         public bool IsInstalledManually => isInstalledManually;
 
         #if VPM_RESOLVER_INCLUDED
+        /// <summary>
+        /// Event triggered when the version is refreshed.
+        /// </summary>
         public event Action OnVersionRefreshed;
         #endif
 
+        /// <summary>
+        /// Create a new instance of <see cref="PackageSelfUpdater"/>.
+        /// </summary>
+        /// <param name="assembly">The assembly contained in the package.</param>
+        /// <param name="listingsID">The ID of the listings repository.</param>
+        /// <param name="listingsURL">The URL of the listings repository.</param>
         public PackageSelfUpdater(Assembly assembly, string listingsID, string listingsURL) :
             this(PackageManagerPackageInfo.FindForAssembly(assembly), listingsID, listingsURL) { }
 
+        /// <summary>
+        /// Create a new instance of <see cref="PackageSelfUpdater"/>.
+        /// </summary>
+        /// <param name="packageInfo">The package info.</param>
+        /// <param name="listingsID">The ID of the listings repository.</param>
+        /// <param name="listingsURL">The URL of the listings repository.</param>
         public PackageSelfUpdater(PackageManagerPackageInfo packageInfo, string listingsID, string listingsURL) {
             if (i18n == null) i18n = EditorI18N.Instance;
             if (packageInfo != null) {
@@ -57,12 +87,18 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             #endif
         }
 
+        /// <summary>
+        /// Check the installation status in background.
+        /// </summary>
         public void CheckInstallationInBackground() {
             #if VPM_RESOLVER_INCLUDED
             UniTask.RunOnThreadPool(CheckInstallation).Forget();
             #endif
         }
 
+        /// <summary>
+        /// Check the installation status.
+        /// </summary>
         public void CheckInstallation() {
             #if VPM_RESOLVER_INCLUDED
             if (string.IsNullOrEmpty(packageName)) {
@@ -85,6 +121,12 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
         #endif
 
+        /// <summary>
+        /// Migrate to use VPM tools and update the package.
+        /// </summary>
+        /// <remarks>
+        /// This method requires user interaction.
+        /// </remarks>
         public void ResolveInstallation() {
             #if VPM_RESOLVER_INCLUDED
             if (!Repos.UserRepoExists(listingsID) && !Repos.AddRepo(new Uri(listingsURL)))
@@ -93,6 +135,12 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             ConfirmAndUpdate();
         }
 
+        /// <summary>
+        /// Update the package.
+        /// </summary>
+        /// <remarks>
+        /// This method requires user interaction.
+        /// </remarks>
         public void ConfirmAndUpdate() {
             #if VPM_RESOLVER_INCLUDED
             if (string.IsNullOrEmpty(packageName)) {
@@ -124,6 +172,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             #endif
         }
 
+        /// <summary>
+        /// Draw the update notifier to anywhere you want.
+        /// This must be called inside an editor GUI block.
+        /// </summary>
         public void DrawUpdateNotifier() {
             if (isInstalledManually) {
                 EditorGUILayout.Space();

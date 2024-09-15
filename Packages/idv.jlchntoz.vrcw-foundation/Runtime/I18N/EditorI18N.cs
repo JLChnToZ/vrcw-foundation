@@ -9,12 +9,27 @@ using UnityEditor;
 #endif
 
 namespace JLChnToZ.VRC.Foundation.I18N {
+    /// <summary>
+    /// Add this attribute to assembly to define a source of I18N data you want to automatically load.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
     public class EditorI18NSource : Attribute {
+        /// <summary>
+        /// The path of the language asset.
+        /// </summary>
+        /// <remarks>
+        /// If this is not set, the GUID will be used to load the asset.
+        /// </remarks>
         public string LanguageAssetPath { get; set; }
+        /// <summary>
+        /// The GUID of the language asset.
+        /// </summary>
         public string LanguageAssetGUID { get; set; }
     }
 
+    /// <summary>
+    /// I18N manager for editor.
+    /// </summary>
     [InitializeOnLoad]
     public class EditorI18N {
         const string PREF_KEY = "vrcw.lang";
@@ -27,6 +42,9 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         readonly Dictionary<string, string> alias = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string currentLanguage;
 
+        /// <summary>
+        /// The current language.
+        /// </summary>
         public string CurrentLanguage {
             get => currentLanguage;
             set {
@@ -37,15 +55,27 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             }
         }
 
+        /// <summary>
+        /// The index of the current language.
+        /// </summary>
         public int LanguageIndex {
             get => Array.IndexOf(languageKeys, currentLanguage);
             set => CurrentLanguage = languageKeys[value];
         }
 
+        /// <summary>
+        /// The display names of available languages.
+        /// </summary>
         public string[] LanguageNames => languageNames;
 
+        /// <summary>
+        /// The singleton instance of <see cref="EditorI18N"/>.
+        /// </summary>
         public static EditorI18N Instance => instance;
 
+        /// <summary>
+        /// Get the localized string by key.
+        /// </summary>
         public string this[string key] {
             get {
                 if (i18nDict.TryGetValue(currentLanguage, out var langDict) &&
@@ -77,11 +107,20 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             instance.Reload();
         }
 
+        /// <summary>
+        /// Get the localized string by key, or return the default value if not found.
+        /// </summary>
+        /// <param name="key">The key of the string.</param>
+        /// <param name="defaultValue">The default value to return if not found.</param>
+        /// <returns>The localized string.</returns>
         public string GetOrDefault(string key, string defaultValue = null) {
             var value = this[key];
             return string.IsNullOrEmpty(value) ? defaultValue ?? key : value;
         }
 
+        /// <summary>
+        /// Reload the I18N data.
+        /// </summary>
         public void Reload() {
             i18nDict.Clear();
             alias.Clear();

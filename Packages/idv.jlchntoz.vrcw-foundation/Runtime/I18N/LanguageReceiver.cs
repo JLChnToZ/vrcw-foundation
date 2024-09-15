@@ -4,10 +4,13 @@ using UnityEngine.UI;
 using TMPro;
 
 namespace JLChnToZ.VRC.Foundation.I18N {
-
+    /// <summary>
+    /// A component receives language data from <see cref="LanguageManager"/>
+    /// and set the text of the attached <see cref="Text"/> or <see cref="TextMeshProUGUI"/> component.
+    /// </summary>
     [TMProMigratable]
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-    [AddComponentMenu("VizVid/Locales/Language Receiver")]
+    [AddComponentMenu("JLChnToZ VRCW Foundation/Locales/Language Receiver")]
     [DefaultExecutionOrder(1)]
     public class LanguageReceiver : UdonSharpBehaviour {
         [SerializeField, HideInInspector, BindUdonSharpEvent] LanguageManager manager;
@@ -17,6 +20,9 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         TextMeshProUGUI textMeshPro;
         bool afterFirstRun;
 
+        /// <summary>
+        /// Additonal arguments for the language string.
+        /// </summary>
         public object[] Args {
             get => args;
             set {

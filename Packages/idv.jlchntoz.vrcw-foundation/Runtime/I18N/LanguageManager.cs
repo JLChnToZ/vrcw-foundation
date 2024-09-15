@@ -11,9 +11,11 @@ using JLChnToZ.VRC.Foundation.ThirdParties.LitJson;
 #endif
 
 namespace JLChnToZ.VRC.Foundation.I18N {
-
+    /// <summary>
+    /// A runtime language manager
+    /// </summary>
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-    [AddComponentMenu("VizVid/Locales/Language Manager")]
+    [AddComponentMenu("JLChnToZ VRCW Foundation/Locales/Language Manager")]
     [DefaultExecutionOrder(0)]
     [HelpURL("https://github.com/JLChnToZ/VVMW/blob/main/Packages/idv.jlchntoz.vvmw/README.md#locale")]
     public partial class LanguageManager : UdonSharpEventSender {
@@ -28,9 +30,14 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         string[] languageNames;
         bool afterFirstRun;
 
+        /// <summary>The language keys.</summary>
         public string[] LanguageKeys => languageKeys;
+        /// <summary>The language names.</summary>
         public string[] LanguageNames => languageNames;
 
+        /// <summary>
+        /// The current language key.
+        /// </summary>
         public string LanguageKey {
             get => languageKey;
             set {
@@ -106,6 +113,11 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             ChangeLanguage();
         }
 
+        /// <summary>
+        /// Get the locale string.
+        /// </summary>
+        /// <param name="key">The key of the locale.</param>
+        /// <returns>The locale string.</returns>
         public string GetLocale(string key) {
             if (string.IsNullOrEmpty(key)) return "";
             if (currentLanguage == null) return key;

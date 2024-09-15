@@ -3,6 +3,12 @@ using UnityEngine;
 using UdonSharp;
 
 namespace JLChnToZ.VRC.Foundation {
+    /// <summary>
+    /// Attach this attribute to a field of <see cref="UdonSharpEventSender"/> based componet to bind the event on build.
+    /// </summary>
+    /// <remarks>
+    /// This is equivalent to calling <see cref="UdonSharpEventSender._AddListener"/> in runtime but done in build time.
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Field)]
     public class BindUdonSharpEventAttribute : Attribute {}
 
@@ -29,6 +35,13 @@ namespace JLChnToZ.VRC.Foundation {
         }
 
 #if UNITY_EDITOR && !COMPILER_UDONSHARP
+        /// <summary>
+        /// Merge the targets of the singletons.
+        /// </summary>
+        /// <param name="singletons">The singletons to merge.</param>
+        /// <remarks>
+        /// This is for use in combination of <see cref="ISingleton.Merge(T[])"/> and is for editor only.
+        /// </remarks>
         protected static void MergeTargets(UdonSharpEventSender[] singletons) {
             UdonSharpEventSender first = null;
             int count = 0;

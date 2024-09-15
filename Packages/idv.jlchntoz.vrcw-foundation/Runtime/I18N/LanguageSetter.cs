@@ -5,7 +5,13 @@ using UnityEngine.UI;
 using TMPro;
 
 namespace JLChnToZ.VRC.Foundation.I18N {
-
+    /// <summary>
+    /// A component allows user to select language from <see cref="LanguageManager"/>.
+    /// </summary>
+    /// <remarks>
+    /// This component need to attach to an UI.
+    /// Entry template must be a <see cref="Toggle"/> with a <see cref="Text"/> or <see cref="TextMeshProUGUI"/> component in it.
+    /// </remarks>
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
     [AddComponentMenu("VizVid/Locales/Language Setter")]
     [DefaultExecutionOrder(1)]

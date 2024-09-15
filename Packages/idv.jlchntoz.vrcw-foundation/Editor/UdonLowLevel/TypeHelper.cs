@@ -6,6 +6,9 @@ using VRC.Udon.Graph;
 using VRC.Udon.Editor;
 
 namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
+    /// <summary>
+    /// Helper class for Udon types.
+    /// </summary>
     public static class TypeHelper {
         static readonly Dictionary<Type, string> typeNames = new Dictionary<Type, string>();
         static readonly Dictionary<VariableName, Type> predefinedVariableTypes = new Dictionary<VariableName, Type> {
@@ -32,6 +35,12 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             typeNames[typeof(IUdonEventReceiver[])] = "VRCUdonCommonInterfacesIUdonEventReceiverArray";
         }
 
+        /// <summary>
+        /// Get the Udon type name of a type.
+        /// </summary>
+        /// <param name="type">The type to get the Udon type name.</param>
+        /// <param name="declareType">Whether to get the type name for declaring.</param>
+        /// <returns>The Udon type name.</returns>
         public static string GetUdonTypeName(this Type type, bool declareType = false) {
             if (!typeNames.TryGetValue(type, out var typeName)) return "SystemObject";
             if (declareType)
@@ -42,6 +51,12 @@ namespace JLChnToZ.VRC.Foundation.UdonLowLevel {
             return typeName;
         }
 
+        /// <summary>
+        /// Get the Udon type name of a variable.
+        /// </summary>
+        /// <param name="variable">The variable to get the Udon type name.</param>
+        /// <param name="declareType">Whether to get the type name for declaring.</param>
+        /// <returns>The Udon type name.</returns>
         public static Type GetPredefinedType(this VariableName varName) {
             predefinedVariableTypes.TryGetValue(varName, out var type);
             return type;

@@ -9,6 +9,9 @@ using VRC.SDK3.Editor;
 using JLChnToZ.VRC.Foundation.I18N;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
+    /// <summary>
+    /// Trusted URL utilities for VRC SDK.
+    /// </summary>
     [InitializeOnLoad]
     public sealed class TrustedUrlUtils {
         public static event Action OnTrustedUrlsReady;
@@ -109,6 +112,11 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             OnTrustedUrlsReady?.Invoke();
         }
 
+        /// <summary>
+        /// Copy trusted URLs to an array.
+        /// </summary>
+        /// <param name="urlType">The type of the trusted URLs.</param>
+        /// <param name="trustedUrls">The array to copy the trusted URLs.</param>
         public static void CopyTrustedUrls(TrustedUrlTypes urlType, ref string[] trustedUrls) {
             var urlList = instances[urlType].trustedUrls;
             if (urlList == null) return;
@@ -117,11 +125,24 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             urlList.CopyTo(trustedUrls);
         }
 
+        /// <summary>
+        /// Draw a URL field.
+        /// </summary>
+        /// <param name="urlProperty">The property of the <see cref="VRCUrl"/>.</param>
+        /// <param name="urlType">The type of the trusted URLs.</param>
+        /// <param name="options">The layout options.</param>
         public static void DrawUrlField(SerializedProperty urlProperty, TrustedUrlTypes urlType, params GUILayoutOption[] options) {
             var contentRect = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight, options);
             DrawUrlField(urlProperty, urlType, contentRect);
         }
 
+        /// <summary>
+        /// Draw a URL field.
+        /// </summary>
+        /// <param name="urlProperty">The property of the <see cref="VRCUrl"/>.</param>
+        /// <param name="urlType">The type of the trusted URLs.</param>
+        /// <param name="rect">The rect of the field.</param>
+        /// <param name="content">The label of the field.</param>
         public static void DrawUrlField(SerializedProperty urlProperty, TrustedUrlTypes urlTypes, Rect rect, GUIContent content = null) {
             if (content == null) content = Utils.GetTempContent(urlProperty.displayName, urlProperty.tooltip);
             if (urlProperty.propertyType == SerializedPropertyType.Generic) // VRCUrl
@@ -131,9 +152,26 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 urlProperty.stringValue = DrawUrlField(url, urlTypes, rect, content);
         }
 
+        /// <summary>
+        /// Draw a URL field.
+        /// </summary>
+        /// <param name="url">The URL.</param>
+        /// <param name="urlType">The type of the trusted URLs.</param>
+        /// <param name="rect">The rect of the field.</param>
+        /// <param name="propertyLabel">The label of the field.</param>
+        /// <param name="propertyTooltip">The tooltip of the field.</param>
+        /// <returns>The new URL.</returns>
         public static string DrawUrlField(string url, TrustedUrlTypes urlType, Rect rect, string propertyLabel = null, string propertyTooltip = null) =>
             DrawUrlField(url, urlType, rect, Utils.GetTempContent(propertyLabel, propertyTooltip));
 
+        /// <summary>
+        /// Draw a URL field.
+        /// </summary>
+        /// <param name="url">The URL.</param>
+        /// <param name="urlType">The type of the trusted URLs.</param>
+        /// <param name="rect">The rect of the field.</param>
+        /// <param name="content">The label of the field.</param>
+        /// <returns>The new URL.</returns>
         public static string DrawUrlField(string url, TrustedUrlTypes urlType, Rect rect, GUIContent content) {
             var instnace = instances[urlType];
             var invalidMessage = instnace.GetValidateMessage(url);
