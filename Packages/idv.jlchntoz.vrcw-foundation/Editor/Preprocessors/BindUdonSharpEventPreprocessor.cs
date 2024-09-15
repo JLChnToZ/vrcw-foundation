@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-
 using UnityEngine;
 using UnityEngine.SceneManagement;
-
 using UnityEditor;
-
+using VRC.Udon;
 using UdonSharp;
 using UdonSharpEditor;
 
 using UnityObject = UnityEngine.Object;
-using VRC.Udon;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class BindUdonSharpEventPreprocessor : UdonSharpPreProcessor {

@@ -21,7 +21,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             #endif
         }
 
-        [MenuItem("Tools/VizVid/Migrate TMPro Components")]
+        [MenuItem("Tools/JLChnToZ VRCW Foundation/Migrate TMPro Components")]
         static void MigrateSelected() {
             LoadFontMapping();
             ComponentReplacer.InitAllComponents();
@@ -29,7 +29,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 Migrate(gameObject);
         }
 
-        [MenuItem("Tools/VizVid/Fix TMPro Visibility")]
+        [MenuItem("Tools/JLChnToZ VRCW Foundation/Fix TMPro Visibility")]
         static void FixVisibility() {
             var temp = new List<TextMeshProUGUI>();
             foreach (var gameObject in Selection.gameObjects) {

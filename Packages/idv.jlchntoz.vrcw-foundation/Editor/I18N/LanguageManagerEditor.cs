@@ -29,7 +29,6 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
         
         public override void OnInspectorGUI() {
             if (!hasInit) OnEnable();
-            base.OnInspectorGUI();
             if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target, drawScript: false)) return;
             if (GUILayout.Button(EditorI18N.Instance.GetLocalizedContent("JLChnToZ.VRC.Foundation.I18N.LanguageManager.openLanguageEditor"))) {
                 if (openedWindow != null) openedWindow.Focus();
