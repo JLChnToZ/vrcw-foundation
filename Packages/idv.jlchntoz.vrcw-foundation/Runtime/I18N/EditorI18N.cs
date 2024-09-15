@@ -84,6 +84,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
 
         public void Reload() {
             i18nDict.Clear();
+            alias.Clear();
             var keyNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var langSource in sources) {
                 TextAsset i18nData = null;
@@ -99,25 +100,24 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                 var jsonData = JsonMapper.ToObject(i18nData.text);
                 var comparer = StringComparer.OrdinalIgnoreCase;
                 foreach (var lang in jsonData.Keys) {
-                    if (!i18nDict.TryGetValue(lang, out var langDict))
-                        i18nDict[lang] = langDict = new Dictionary<string, string>(comparer);
-                    var langData = jsonData[lang];
-                    string langName = null;
+                    if (!alias.TryGetValue(lang, out var realLang)) realLang = lang;
+                    if (!i18nDict.TryGetValue(realLang, out var langDict))
+                        i18nDict[realLang] = langDict = new Dictionary<string, string>(comparer);
+                    var langData = jsonData[realLang];
                     foreach (var key in langData.Keys)
                         switch (key) {
                             case "_alias":
                                 foreach (JsonData aliasKey in langData[key])
-                                    alias[(string)aliasKey] = lang;
+                                    alias[(string)aliasKey] = realLang;
                                 break;
                             case "_name":
-                                langName = (string)langData[key];
+                                keyNameMap[realLang] = (string)langData[key];
                                 break;
                             default:
                                 langDict[key] = (string)langData[key];
                                 break;
                         }
-                    if (!string.IsNullOrEmpty(lang) && (!string.IsNullOrEmpty(langName) || !keyNameMap.ContainsKey(lang)))
-                        keyNameMap[lang] = langName ?? lang;
+                    if (!keyNameMap.ContainsKey(realLang)) keyNameMap.Add(realLang, realLang);
                 }
             }
             int i = 0;
@@ -149,5 +149,33 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             }
             currentLanguage = DEFAULT_LANGUAGE;
         }
+
+#if UNITY_EDITOR
+        sealed class LocaleUpdateWatcher : AssetPostprocessor {
+            static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths, bool didDomainReload) {
+                var interestedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                interestedPaths.UnionWith(importedAssets);
+                interestedPaths.UnionWith(deletedAssets);
+                interestedPaths.UnionWith(movedAssets);
+                interestedPaths.UnionWith(movedFromAssetPaths);
+                bool shouldReload = false;
+                foreach (var src in sources) {
+                    if (string.IsNullOrEmpty(src.LanguageAssetPath)) {
+                        if (!string.IsNullOrEmpty(src.LanguageAssetGUID)) {
+                            var path = AssetDatabase.GUIDToAssetPath(src.LanguageAssetGUID);
+                            if (interestedPaths.Contains(path)) {
+                                shouldReload = true;
+                                break;
+                            }
+                        }
+                    } else if (interestedPaths.Contains(src.LanguageAssetPath)) {
+                        shouldReload = true;
+                        break;
+                    }
+                }
+                if (shouldReload) instance.Reload();
+            }
+        }
+#endif
     }
 }
