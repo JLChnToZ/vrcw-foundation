@@ -8,10 +8,12 @@
         "VRC.Udon",
         "VRC.Udon.Serialization.OdinSerializer",
         "VRC.Udon.Editor",
+        "com.vrchat.core.vpm-resolver.Editor",
         "UdonSharp.Runtime",
         "UdonSharp.Editor",
         "UniTask",
-        "JLChnToZ.VRC.Foundation"
+        "JLChnToZ.VRC.Foundation",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [
         "Editor"
@@ -22,6 +24,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.core.vpm-resolver",
+            "expression": "",
+            "define": "VPM_RESOLVER_INCLUDED"
+        }
+    ],
     "noEngineReferences": false
 }
