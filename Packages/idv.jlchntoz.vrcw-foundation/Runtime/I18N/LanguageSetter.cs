@@ -13,7 +13,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
     /// Entry template must be a <see cref="Toggle"/> with a <see cref="Text"/> or <see cref="TextMeshProUGUI"/> component in it.
     /// </remarks>
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-    [AddComponentMenu("VizVid/Locales/Language Setter")]
+    [AddComponentMenu("JLChnToZ VRCW Foundation/Locales/Language Setter")]
     [DefaultExecutionOrder(1)]
     public class LanguageSetter : UdonSharpBehaviour {
         [SerializeField, HideInInspector, BindUdonSharpEvent] LanguageManager manager;

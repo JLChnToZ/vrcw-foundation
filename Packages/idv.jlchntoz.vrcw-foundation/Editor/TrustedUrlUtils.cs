@@ -78,7 +78,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         static async UniTask GetTrustedUrlsLazy() {
             var vrcsdkConfig = ConfigManager.RemoteConfig;
             if (!vrcsdkConfig.IsInitialized()) {
-                Debug.Log("[VVMW] VRCSDK config is not initialized, initializing...");
+                Debug.Log("VRCSDK config is not initialized, initializing...");
                 var initState = new UniTaskCompletionSource();
                 vrcsdkConfig.Init(
                     () => initState.TrySetResult(),
