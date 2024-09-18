@@ -122,6 +122,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         /// Reload the I18N data.
         /// </summary>
         public void Reload() {
+#if UNITY_EDITOR
             i18nDict.Clear();
             alias.Clear();
             var keyNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -186,6 +187,9 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                     return;
                 }
             }
+#else
+            Debug.LogWarning("EditorI18N is not available in runtime.");
+#endif
             currentLanguage = DEFAULT_LANGUAGE;
         }
 
