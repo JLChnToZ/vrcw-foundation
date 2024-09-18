@@ -30,7 +30,9 @@ namespace JLChnToZ.VRC.Foundation.I18N {
     /// <summary>
     /// I18N manager for editor.
     /// </summary>
+#if UNITY_EDITOR
     [InitializeOnLoad]
+#endif
     public class EditorI18N {
         const string PREF_KEY = "vrcw.lang";
         const string DEFAULT_LANGUAGE = "en";
@@ -187,10 +189,8 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                     return;
                 }
             }
-#else
-            Debug.LogWarning("EditorI18N is not available in runtime.");
-#endif
             currentLanguage = DEFAULT_LANGUAGE;
+#endif
         }
 
 #if UNITY_EDITOR
