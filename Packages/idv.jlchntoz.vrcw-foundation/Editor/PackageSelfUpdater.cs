@@ -83,9 +83,6 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             availableVersion = "";
             this.listingsID = listingsID;
             this.listingsURL = listingsURL;
-            #if VPM_RESOLVER_INCLUDED
-            isDetectionAvailable = true;
-            #endif
         }
 
         /// <summary>
