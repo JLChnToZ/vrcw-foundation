@@ -1,3 +1,5 @@
+using System;
+using Cysharp.Threading.Tasks;
 using System.Reflection;
 using UnityEngine;
 using UnityEditor;
@@ -5,15 +7,16 @@ using JLChnToZ.VRC.Foundation.I18N;
 using JLChnToZ.VRC.Foundation.I18N.Editors;
 
 #if VPM_RESOLVER_INCLUDED
-using System;
 using System.Text;
-using Cysharp.Threading.Tasks;
 using VRC.PackageManagement.Core;
 using VRC.PackageManagement.Core.Types;
 using VRC.PackageManagement.Core.Types.Packages;
 using VRC.PackageManagement.Resolver;
 
 using SemanticVersion = SemanticVersioning.Version;
+#else
+using System.IO;
+using JLChnToZ.VRC.Foundation.ThirdParties.LitJson;
 #endif
 
 using PackageManagerPackageInfo = UnityEditor.PackageManager.PackageInfo;
@@ -50,12 +53,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         /// </summary>
         public bool IsInstalledManually => isInstalledManually;
 
-        #if VPM_RESOLVER_INCLUDED
         /// <summary>
         /// Event triggered when the version is refreshed.
         /// </summary>
         public event Action OnVersionRefreshed;
-        #endif
 
         /// <summary>
         /// Create a new instance of <see cref="PackageSelfUpdater"/>.
@@ -82,44 +83,54 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             availableVersion = "";
             this.listingsID = listingsID;
             this.listingsURL = listingsURL;
-            #if !VPM_RESOLVER_INCLUDED
-            isInstalledManually = true;
+            #if VPM_RESOLVER_INCLUDED
+            isDetectionAvailable = true;
             #endif
         }
 
         /// <summary>
         /// Check the installation status in background.
         /// </summary>
-        public void CheckInstallationInBackground() {
-            #if VPM_RESOLVER_INCLUDED
-            UniTask.RunOnThreadPool(CheckInstallation).Forget();
-            #endif
-        }
+        public void CheckInstallationInBackground() => UniTask.RunOnThreadPool(CheckInstallation).Forget();
 
         /// <summary>
         /// Check the installation status.
         /// </summary>
         public void CheckInstallation() {
-            #if VPM_RESOLVER_INCLUDED
-            if (string.IsNullOrEmpty(packageName)) {
-                isInstalledManually = true;
-                return;
-            }
-            var allVersions = Resolver.GetAllVersionsOf(packageName);
-            if (allVersions.Count > 0 && new SemanticVersion(allVersions[0]) > new SemanticVersion(packageVersion))
-                availableVersion = allVersions[0];
-            var manifest = VPMProjectManifest.Load(Resolver.ProjectDir);
-            isInstalledManually = !manifest.locked.ContainsKey(packageName) && !manifest.dependencies.ContainsKey(packageName);
+            isInstalledManually = !IsPackageInVPM();
             CheckInstallationCallback().Forget();
-            #endif
         }
 
-        #if VPM_RESOLVER_INCLUDED
+        bool IsPackageInVPM() {
+            try {
+                if (string.IsNullOrEmpty(packageName)) return false;
+                #if VPM_RESOLVER_INCLUDED
+                var allVersions = Resolver.GetAllVersionsOf(packageName);
+                if (allVersions.Count > 0 && new SemanticVersion(allVersions[0]) > new SemanticVersion(packageVersion))
+                    availableVersion = allVersions[0];
+                var manifest = VPMProjectManifest.Load(Resolver.ProjectDir);
+                return manifest.locked.ContainsKey(packageName) || manifest.dependencies.ContainsKey(packageName);
+                #else
+                // VPM resolver unavailable, fallback to manual detection.
+                var vpmManifestPath = Path.GetFullPath("../Packages/vpm-manifest.json", Application.dataPath);
+                if (!File.Exists(vpmManifestPath)) return false;
+                JsonData vpmManifest;
+                using (var file = File.OpenRead(vpmManifestPath))
+                using (var reader = new StreamReader(file))
+                    vpmManifest = JsonMapper.ToObject(new JsonReader(reader));
+                if (!vpmManifest.IsObject || !vpmManifest.ContainsKey("dependencies")) return false;
+                var dependencies = vpmManifest["dependencies"];
+                return dependencies.IsObject && dependencies.ContainsKey(packageName);
+                #endif
+            } catch {
+                return false;
+            }
+        }
+
         async UniTask CheckInstallationCallback() {
             await UniTask.SwitchToMainThread();
             OnVersionRefreshed?.Invoke();
         }
-        #endif
 
         /// <summary>
         /// Migrate to use VPM tools and update the package.
@@ -164,6 +175,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (i18n.DisplayLocalizedDialog2("PackageSelfUpdater.update_confirm", sb))
                 UpdateUnchecked(vrcPackage).Forget();
             #else
+            if (!isInstalledManually) return;
             switch (i18n.DisplayLocalizedDialog3("PackageSelfUpdater.update_message_no_vcc")) {
                 case 1: Application.OpenURL("https://vcc.docs.vrchat.com/"); break;
                 case 2: Application.OpenURL("https://vcc.docs.vrchat.com/vpm/migrating"); break;

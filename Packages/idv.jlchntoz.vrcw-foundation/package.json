@@ -6,7 +6,6 @@
   "description": "Foundation framework enhances VRChat World developments with Udon(sharp).",
   "vrchatVersion": "2022.1.1",
   "vpmDependencies": {
-    "com.vrchat.core.vpm-resolver": "0.x.x",
     "com.vrchat.worlds": "3.x.x"
   },
   "author": {
