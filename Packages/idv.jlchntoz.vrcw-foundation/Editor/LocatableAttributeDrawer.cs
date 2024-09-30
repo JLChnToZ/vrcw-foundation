@@ -2,10 +2,11 @@ using System;
 using System.Reflection;
 using UnityEngine;
 using UnityEditor;
+using JLChnToZ.VRC.Foundation.I18N;
+using JLChnToZ.VRC.Foundation.I18N.Editors;
 using UnityObject = UnityEngine.Object;
-using JLChnToZ.VRC.Foundation.Editors;
 
-namespace JLChnToZ.VRC.Foundation.I18N.Editors {
+namespace JLChnToZ.VRC.Foundation.Editors {
     using static LocatableAttribute;
     [CustomPropertyDrawer(typeof(LocatableAttribute))]
     public class LocatableAttributeDrawer : PropertyDrawer {
