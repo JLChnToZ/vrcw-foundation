@@ -80,6 +80,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (!vrcsdkConfig.IsInitialized()) {
                 Debug.Log("VRCSDK config is not initialized, initializing...");
                 var initState = new UniTaskCompletionSource();
+                API.SetOnlineMode(true);
                 vrcsdkConfig.Init(
                     () => initState.TrySetResult(),
                     () => initState.TrySetException(new Exception("Failed to initialize VRCSDK config."))
