@@ -5,8 +5,13 @@ using UnityEngine;
 using UnityEditor;
 using VRC.Core;
 using VRC.SDKBase;
-using VRC.SDK3.Editor;
 using JLChnToZ.VRC.Foundation.I18N;
+
+#if UNITY_ANDROID || UNITY_IOS
+using VRC.SDKBase.Editor;
+#elif UNITY_STANDALONE_WIN
+using VRC.SDK3.Editor;
+#endif
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     /// <summary>
@@ -58,9 +63,19 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         static void AddBuildHook(object sender, EventArgs e) {
-            if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkWorldBuilderApi builder))
+#if UNITY_ANDROID || UNITY_IOS
+            if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkBuilderApi builder))
+            {
                 builder.OnSdkBuildStart += OnBuildStarted;
-            getTrustedUrlsTask.Task.Forget();
+                getTrustedUrlsTask.Task.Forget();
+            }
+#elif UNITY_STANDALONE_WIN
+            if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkWorldBuilderApi builder))
+            {
+                builder.OnSdkBuildStart += OnBuildStarted;
+                getTrustedUrlsTask.Task.Forget();
+            }
+#endif
         }
 
         static void OnBuildStarted(object sender, object target) => getTrustedUrlsTask.Task.Forget();
