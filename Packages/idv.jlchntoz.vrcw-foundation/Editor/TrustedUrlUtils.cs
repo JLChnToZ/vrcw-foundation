@@ -7,10 +7,10 @@ using VRC.Core;
 using VRC.SDKBase;
 using JLChnToZ.VRC.Foundation.I18N;
 
-#if UNITY_ANDROID || UNITY_IOS
-using VRC.SDKBase.Editor;
-#elif UNITY_STANDALONE_WIN
+#if VRC_SDK_VRCSDK3
 using VRC.SDK3.Editor;
+#else
+using VRC.SDKBase.Editor;
 #endif
 
 namespace JLChnToZ.VRC.Foundation.Editors {
@@ -30,16 +30,16 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         static TrustedUrlUtils() {
             var stringComparer = StringComparer.OrdinalIgnoreCase;
-            var supportedProtocolsCurl = new HashSet<string>(new [] {
+            var supportedProtocolsCurl = new HashSet<string>(new[] {
                 "http", "https",
             }, stringComparer);
             // https://www.renderheads.com/content/docs/AVProVideo/articles/supportedmedia.html
             // https://learn.microsoft.com/en-us/windows/win32/medfound/supported-protocols
-            var supportedProtocolsMF = new HashSet<string>(new [] {
+            var supportedProtocolsMF = new HashSet<string>(new[] {
                 "http", "https", "rtsp", "rtspt", "rtspu", "rtmp", "rtmps",
             }, stringComparer);
             // https://exoplayer.dev/supported-formats.html
-            var supportedProtocolsExo = new HashSet<string>(new [] {
+            var supportedProtocolsExo = new HashSet<string>(new[] {
                 "http", "https", "rtsp", "rtmp",
             }, stringComparer);
             instances[TrustedUrlTypes.UnityVideo] = new TrustedUrlUtils(supportedProtocolsCurl);
@@ -63,19 +63,13 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         static void AddBuildHook(object sender, EventArgs e) {
-#if UNITY_ANDROID || UNITY_IOS
-            if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkBuilderApi builder))
-            {
-                builder.OnSdkBuildStart += OnBuildStarted;
-                getTrustedUrlsTask.Task.Forget();
-            }
-#elif UNITY_STANDALONE_WIN
+#if VRC_SDK_VRCSDK3
             if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkWorldBuilderApi builder))
-            {
-                builder.OnSdkBuildStart += OnBuildStarted;
-                getTrustedUrlsTask.Task.Forget();
-            }
+#else
+            if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkBuilderApi builder))
 #endif
+                builder.OnSdkBuildStart += OnBuildStarted;
+            getTrustedUrlsTask.Task.Forget();
         }
 
         static void OnBuildStarted(object sender, object target) => getTrustedUrlsTask.Task.Forget();
