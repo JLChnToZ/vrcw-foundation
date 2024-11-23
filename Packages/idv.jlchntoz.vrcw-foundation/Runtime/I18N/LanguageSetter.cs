@@ -3,6 +3,7 @@ using UdonSharp;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using VRC.SDKBase;
 
 namespace JLChnToZ.VRC.Foundation.I18N {
     /// <summary>
@@ -29,10 +30,13 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             SendCustomEventDelayedFrames(nameof(_DetectLanguageInit), 0);
         }
 
-        public void _DetectLanguageInit() {
+#if COMPILER_UDONSHARP
+        public
+#endif
+        void _DetectLanguageInit() {
             var keys = manager.LanguageKeys;
             var names = manager.LanguageNames;
-            if (keys == null || names == null) {
+            if (!Utilities.IsValid(keys) || !Utilities.IsValid(names)) {
                 SendCustomEventDelayedFrames(nameof(_DetectLanguageInit), 0);
                 return;
             }
@@ -41,9 +45,9 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                 var entry = Instantiate(entryTemplate);
                 entry.transform.SetParent(transform, false);
                 var text = entry.GetComponentInChildren<Text>(true);
-                if (text != null) text.text = names[i];
+                if (Utilities.IsValid(text)) text.text = names[i];
                 var tmp = entry.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (tmp != null) tmp.text = names[i];
+                if (Utilities.IsValid(tmp)) tmp.text = names[i];
                 entry.SetActive(true);
                 spawnedEntries[i] = entry.GetComponent<Toggle>();
             }
@@ -51,14 +55,20 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             _OnLanguageChanged();
         }
 
-        public void _OnLanguageChanged() {
+#if COMPILER_UDONSHARP
+        public
+#endif
+        void _OnLanguageChanged() {
             if (!hasInit) return;
             int index = Array.IndexOf(manager.LanguageKeys, manager.LanguageKey);
             for (int i = 0; i < spawnedEntries.Length; i++)
                 spawnedEntries[i].SetIsOnWithoutNotify(i == index);
         }
 
-        public void _OnToggleClick() {
+#if COMPILER_UDONSHARP
+        public
+#endif
+        void _OnToggleClick() {
             if (!hasInit) return;
             for (int i = 0; i < spawnedEntries.Length; i++) {
                 if (spawnedEntries[i].isOn) {

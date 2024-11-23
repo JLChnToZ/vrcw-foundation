@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using VRC.SDKBase;
 using UdonSharp;
 
 namespace JLChnToZ.VRC.Foundation {
@@ -13,11 +14,18 @@ namespace JLChnToZ.VRC.Foundation {
     public class BindUdonSharpEventAttribute : Attribute {}
 
     public abstract class UdonSharpEventSender : UdonSharpBehaviour {
+        /// <summary>
+        /// All callback listeners.
+        /// </summary>
         [SerializeField] protected UdonSharpBehaviour[] targets;
 
+        /// <summary>
+        /// Add a listener to the event.
+        /// </summary>
+        /// <param name="callback">The callback listener.</param>
         public void _AddListener(UdonSharpBehaviour callback) {
-            if (callback == null) return;
-            if (targets == null) {
+            if (!Utilities.IsValid(callback)) return;
+            if (!Utilities.IsValid(targets)) {
                 targets = new UdonSharpBehaviour[] { callback };
                 return;
             }
@@ -28,10 +36,14 @@ namespace JLChnToZ.VRC.Foundation {
             targets = temp;
         }
 
+        /// <summary>
+        /// Send an event to all targets.
+        /// </summary>
+        /// <param name="name">The event name.</param>
         protected void SendEvent(string name) {
-            if (targets == null) return;
+            if (!Utilities.IsValid(targets)) return;
             Debug.Log($"[{GetUdonTypeName()}] Send Event {name}");
-            foreach (var ub in targets) if (ub != null) ub.SendCustomEvent(name);
+            foreach (var ub in targets) if (Utilities.IsValid(ub)) ub.SendCustomEvent(name);
         }
 
 #if UNITY_EDITOR && !COMPILER_UDONSHARP

@@ -120,7 +120,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         /// <returns>The locale string.</returns>
         public string GetLocale(string key) {
             if (string.IsNullOrEmpty(key)) return "";
-            if (currentLanguage == null) return key;
+            if (!Utilities.IsValid(currentLanguage)) return key;
             if (currentLanguage.TryGetValue(key, TokenType.String, out DataToken token))
                 return token.String;
             return key;
@@ -148,9 +148,9 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             MergeTargets(others);
             var jsonTexts = new List<string>();
             foreach (var languageManager in others) {
-                if (languageManager == null) continue;
+                if (!Utilities.IsValid(languageManager)) continue;
                 var jsonFile = languageManager.languageJsonFiles;
-                if (jsonFile != null) 
+                if (Utilities.IsValid(jsonFile)) 
                     foreach (var textAsset in jsonFile) {
                         var text = textAsset.text;
                         if (!string.IsNullOrEmpty(text))
@@ -177,8 +177,8 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             HashSet<string> allLanguageKeys = null,
             Dictionary<string, LanguageEntry> langMap = null
         ) {
-            if (langMap == null) langMap = new Dictionary<string, LanguageEntry>();
-            if (keyStack == null) keyStack = new List<object>();
+            if (!Utilities.IsValid(langMap)) langMap = new Dictionary<string, LanguageEntry>();
+            if (!Utilities.IsValid(keyStack)) keyStack = new List<object>();
             else keyStack.Clear();
             var reader = new JsonReader(json);
             LanguageEntry currentEntry = null;
@@ -206,7 +206,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                     case JsonToken.String:
                         switch (keyStack.Count) {
                             case 2: {
-                                if (currentEntry != null && keyStack[1] is string key) {
+                                if (Utilities.IsValid(currentEntry) && keyStack[1] is string key) {
                                     var strValue = (string)reader.Value;
                                     switch (key) {
                                         case "_name":
@@ -221,7 +221,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                                         default:
                                             currentEntry.languages[key] = strValue;
                                             allLanguageKeys?.Add(key);
-                                            if (defaultLanguageMapping != null &&
+                                            if (Utilities.IsValid(defaultLanguageMapping) &&
                                                 !defaultLanguageMapping.ContainsKey(key))
                                                 defaultLanguageMapping[key] = strValue;
                                             break;
@@ -230,7 +230,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                                 break;
                             }
                             case 3: {
-                                if (currentEntry != null && keyStack[1] is string key && key == "_timezone" && keyStack[2] is int)
+                                if (Utilities.IsValid(currentEntry) && keyStack[1] is string key && key == "_timezone" && keyStack[2] is int)
                                     currentEntry.timezones.Add(reader.Value.ToString());
                                 break;
                             }
@@ -280,7 +280,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                     jsonWriter.WritePropertyName(langEntry.Key);
                     jsonWriter.Write(langEntry.Value);
                 }
-                if (defaultLanguageMapping != null)
+                if (Utilities.IsValid(defaultLanguageMapping))
                     foreach (var defaultLang in defaultLanguageMapping)
                         if (!lang.languages.ContainsKey(defaultLang.Key)) {
                             jsonWriter.WritePropertyName(defaultLang.Key);
