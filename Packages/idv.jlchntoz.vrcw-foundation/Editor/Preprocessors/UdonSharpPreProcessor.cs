@@ -34,7 +34,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         protected FieldInfo[] GetFields<T>(Type type) {
             if (!filteredFields.TryGetValue(type, out var fieldInfos)) {
-                fieldInfos = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                fieldInfos = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy)
                     .Where(
                         typeof(Attribute).IsAssignableFrom(typeof(T)) ?
                         IsAttributeDefined<T> :
