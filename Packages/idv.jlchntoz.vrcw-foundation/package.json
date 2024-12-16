@@ -1,7 +1,7 @@
 {
   "name": "idv.jlchntoz.vrcw-foundation",
   "displayName": "VRCW Foundation",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "unity": "2022.3",
   "description": "Foundation framework enhances VRChat World developments with Udon(sharp).",
   "vrchatVersion": "2022.1.1",
