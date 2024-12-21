@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEditor;
+using UnityObject = UnityEngine.Object;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     public static class Utils {
@@ -19,17 +20,38 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         public static IEnumerable<T> IterateAllComponents<T>(this Scene scene, bool includeEditorOnly = false) where T : Component {
             var pending = new Stack<Transform>();
-            var components = new List<T>();
             var rootGameObjects = scene.GetRootGameObjects();
             for (int i = rootGameObjects.Length - 1; i >= 0; i--) pending.Push(rootGameObjects[i].transform);
-            while (pending.Count > 0) {
-                var transform = pending.Pop();
-                if (transform == null || (!includeEditorOnly && transform.tag == "EditorOnly")) continue;
+            return IterateAllComponents<T>(pending, includeEditorOnly);
+        }
+
+        public static IEnumerable<T> IterateAllComponents<T>(this GameObject gameObject, bool includeEditorOnly = false) where T : Component {
+            var pending = new Stack<Transform>();
+            pending.Push(gameObject.transform);
+            return IterateAllComponents<T>(pending, includeEditorOnly);
+        }
+
+        public static IEnumerable<T> IterateAllComponents<T>(Stack<Transform> pending, bool includeEditorOnly) where T : Component {
+            var components = new List<T>();
+            while (pending.TryPop(out var transform)) {
+                if (transform == null || (!includeEditorOnly && transform.CompareTag("EditorOnly"))) continue;
                 for (int i = transform.childCount - 1; i >= 0; i--) pending.Push(transform.GetChild(i));
                 components.Clear();
                 transform.GetComponents(components);
                 foreach (var component in components) if (component != null) yield return component;
             }
+        }
+
+        public static bool IsAvailableOnRuntime(this UnityObject gameObjectOrComponent) {
+            if (gameObjectOrComponent == null) return false;
+            for (var transform =
+                gameObjectOrComponent is Transform t ? t :
+                gameObjectOrComponent is GameObject go ? go.transform :
+                gameObjectOrComponent is Component c ? c.transform :
+                null;
+                transform != null; transform = transform.parent)
+                if (transform.CompareTag("EditorOnly")) return false;
+            return true;
         }
 
         public static T FindClosestComponentInHierarchy<T>(Transform startFrom, GameObject[] roots = null) where T : Component =>
