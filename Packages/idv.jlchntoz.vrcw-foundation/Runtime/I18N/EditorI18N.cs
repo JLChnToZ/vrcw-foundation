@@ -20,11 +20,27 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         /// <remarks>
         /// If this is not set, the GUID will be used to load the asset.
         /// </remarks>
-        public string LanguageAssetPath { get; set; }
+        public string LanguageAssetPath {
+            get => LanguageAssetPaths != null && LanguageAssetPaths.Length > 0 ? LanguageAssetPaths[0] : null;
+            set {
+                if (LanguageAssetPaths == null || LanguageAssetPaths.Length == 0)
+                    LanguageAssetPaths = new string[1];
+                LanguageAssetPaths[0] = value;
+            }
+        }
+        public string[] LanguageAssetPaths { get; set; }
         /// <summary>
         /// The GUID of the language asset.
         /// </summary>
-        public string LanguageAssetGUID { get; set; }
+        public string LanguageAssetGUID {
+            get => LanguageAssetGUIDs != null && LanguageAssetGUIDs.Length > 0 ? LanguageAssetGUIDs[0] : null;
+            set {
+                if (LanguageAssetGUIDs == null || LanguageAssetGUIDs.Length == 0)
+                    LanguageAssetGUIDs = new string[1];
+                LanguageAssetGUIDs[0] = value;
+            }
+        }
+        public string[] LanguageAssetGUIDs { get; set; }
     }
 
     /// <summary>
@@ -94,19 +110,23 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             instance = new EditorI18N();
             var appDomain = AppDomain.CurrentDomain;
             foreach (var assembly in appDomain.GetAssemblies()) {
-                var source = assembly.GetCustomAttribute<EditorI18NSource>();
+                var source = assembly.GetCustomAttributes<EditorI18NSource>();
                 if (source == null) continue;
-                sources.Add(source);
+                sources.UnionWith(source);
             }
             appDomain.AssemblyLoad += OnAssemblyLoad;
-            instance.Reload();
+#if UNITY_EDITOR
+            EditorApplication.delayCall += instance.Reload;
+#endif
         }
 
         static void OnAssemblyLoad(object sender, AssemblyLoadEventArgs args) {
-            var source = args.LoadedAssembly.GetCustomAttribute<EditorI18NSource>();
+            var source = args.LoadedAssembly.GetCustomAttributes<EditorI18NSource>();
             if (source == null) return;
-            sources.Add(source);
-            instance.Reload();
+            sources.UnionWith(source);
+#if UNITY_EDITOR
+            EditorApplication.delayCall += instance.Reload;
+#endif
         }
 
         /// <summary>
@@ -128,16 +148,22 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             i18nDict.Clear();
             alias.Clear();
             var keyNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var paths = new HashSet<string>();
             foreach (var langSource in sources) {
-                TextAsset i18nData = null;
-                string path = langSource.LanguageAssetPath;
-                if (string.IsNullOrEmpty(path) &&
-                    !string.IsNullOrEmpty(langSource.LanguageAssetGUID)) {
-                    var path2 = AssetDatabase.GUIDToAssetPath(langSource.LanguageAssetGUID);
-                    if (!string.IsNullOrEmpty(path2)) path = path2;
+                var rawPaths = langSource.LanguageAssetPaths;
+                if (rawPaths != null) {
+                    paths.UnionWith(rawPaths);
+                    continue;
                 }
-                if (!string.IsNullOrEmpty(path))
-                    i18nData = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
+                var guids = langSource.LanguageAssetGUIDs;
+                if (guids != null)
+                    foreach (var guid in guids) {
+                        var path = AssetDatabase.GUIDToAssetPath(guid);
+                        if (!string.IsNullOrEmpty(path)) paths.Add(path);
+                    }
+            }
+            foreach (var path in paths) {
+                var i18nData = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
                 if (i18nData == null) continue;
                 var jsonData = JsonMapper.ToObject(i18nData.text);
                 var comparer = StringComparer.OrdinalIgnoreCase;
@@ -145,20 +171,39 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                     if (!alias.TryGetValue(lang, out var realLang)) realLang = lang;
                     if (!i18nDict.TryGetValue(realLang, out var langDict))
                         i18nDict[realLang] = langDict = new Dictionary<string, string>(comparer);
-                    var langData = jsonData[realLang];
-                    foreach (var key in langData.Keys)
+                    var langData = jsonData[lang];
+                    foreach (var key in langData.Keys) {
+                        var ld = langData[key];
                         switch (key) {
                             case "_alias":
-                                foreach (JsonData aliasKey in langData[key])
-                                    alias[(string)aliasKey] = realLang;
+                                foreach (JsonData aliasKey in ld) {
+                                    var aliasName = (string)aliasKey;
+                                    alias[aliasName] = realLang;
+                                    if (!string.Equals(aliasName, realLang, StringComparison.OrdinalIgnoreCase)) {
+                                        if (i18nDict.TryGetValue(aliasName, out var aliasDict) &&
+                                            aliasDict != langDict) {
+                                            foreach (var pair in aliasDict)
+                                                langDict[pair.Key] = pair.Value;
+                                            i18nDict.Remove(aliasName);
+                                        }
+                                        keyNameMap.Remove(aliasName);
+                                    }
+                                }
                                 break;
                             case "_name":
-                                keyNameMap[realLang] = (string)langData[key];
+                                keyNameMap[lang] = (string)ld;
                                 break;
                             default:
-                                langDict[key] = (string)langData[key];
+                                switch (ld.GetJsonType()) {
+                                    case JsonType.Object:
+                                    case JsonType.Array: break;
+                                    default:
+                                        langDict[key] = ld.ToString();
+                                        break;
+                                }
                                 break;
                         }
+                    }
                     if (!keyNameMap.ContainsKey(realLang)) keyNameMap.Add(realLang, realLang);
                 }
             }
@@ -203,18 +248,21 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                 interestedPaths.UnionWith(movedFromAssetPaths);
                 bool shouldReload = false;
                 foreach (var src in sources) {
-                    if (string.IsNullOrEmpty(src.LanguageAssetPath)) {
-                        if (!string.IsNullOrEmpty(src.LanguageAssetGUID)) {
-                            var path = AssetDatabase.GUIDToAssetPath(src.LanguageAssetGUID);
-                            if (interestedPaths.Contains(path)) {
+                    if (src.LanguageAssetPaths != null)
+                        foreach (var path in src.LanguageAssetPaths)
+                            if (!string.IsNullOrEmpty(path) && interestedPaths.Contains(path)) {
+                                shouldReload = true;
+                                break;
+                            }
+                    if (shouldReload) break;
+                    if (src.LanguageAssetGUIDs != null)
+                        foreach (var guid in src.LanguageAssetGUIDs) {
+                            var path = AssetDatabase.GUIDToAssetPath(guid);
+                            if (!string.IsNullOrEmpty(path) && interestedPaths.Contains(path)) {
                                 shouldReload = true;
                                 break;
                             }
                         }
-                    } else if (interestedPaths.Contains(src.LanguageAssetPath)) {
-                        shouldReload = true;
-                        break;
-                    }
                 }
                 if (shouldReload) instance.Reload();
             }
