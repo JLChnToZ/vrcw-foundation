@@ -13,7 +13,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
     [AddComponentMenu("JLChnToZ VRCW Foundation/Locales/Language Receiver")]
     [DefaultExecutionOrder(1)]
-    public class LanguageReceiver : UdonSharpBehaviour {
+    public partial class LanguageReceiver : UdonSharpBehaviour {
         [SerializeField, HideInInspector, BindUdonSharpEvent] LanguageManager manager;
         [SerializeField, LocalizedLabel] string key;
         object[] args;
@@ -57,4 +57,21 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             if (Utilities.IsValid(textMeshPro)) textMeshPro.text = result;
         }
     }
+
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+    public partial class LanguageReceiver : ISelfPreProcess {
+        public int Priority => 0;
+
+        public void PreProcess() {
+            if (TryGetComponent(out Text text)) {
+                if (string.IsNullOrEmpty(key)) key = text.text;
+                text.text = "";
+            }
+            if (TryGetComponent(out TMP_Text tmpro)) {
+                if (string.IsNullOrEmpty(key)) key = tmpro.text;
+                tmpro.text = "";
+            }
+        }
+    }
+#endif
 }
