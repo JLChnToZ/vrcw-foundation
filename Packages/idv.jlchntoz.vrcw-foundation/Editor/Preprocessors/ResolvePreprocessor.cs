@@ -65,7 +65,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
             if (!resolveFields.TryGetValue(field, out var attributes)) {
                 attributes = field.GetCustomAttributes<ResolveAttribute>(true).ToArray();
-                resolveFields[field] = attributes.Length > 0 ? attributes : null;
+                if (attributes.Length == 0) attributes = null;
+                resolveFields[field] = attributes;
             }
             if (attributes != null) {
                 if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
