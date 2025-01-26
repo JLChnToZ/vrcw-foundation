@@ -48,14 +48,11 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             bool changed = false;
             using (var so = new SerializedObject(usharp)) {
                 foreach (var field in GetFields<ResolveAttribute>(type)) {
-                    if (!resolveFields.TryGetValue(field, out var attributes))
-                        resolveFields[field] = attributes = field.GetCustomAttributes<ResolveAttribute>(true).ToArray();
                     try {
-                        var orgValue = field.GetValue(usharp) as UnityObject;
-                        var srcObj = Resolve(field, attributes, usharp);
-                        if (orgValue != srcObj)
-                            so.FindProperty(field.Name).objectReferenceValue = srcObj;
-                        changed = true;
+                        if (TryResolve(field, usharp, out var resolved) && field.GetValue(usharp) as UnityObject != resolved) {
+                            so.FindProperty(field.Name).objectReferenceValue = resolved;
+                            changed = true;
+                        }
                     } catch (Exception ex) {
                         Debug.LogError($"[ResolvePreprocessor] Unable to set `{field.Name}` in `{usharp.name}`: {ex.Message}", usharp);
                     }
@@ -66,43 +63,54 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             UdonSharpEditorUtility.CopyProxyToUdon(usharp);
         }
 
-        UnityObject Resolve(FieldInfo field, ResolveAttribute[] attributes, UnityObject instance) {
+        bool TryResolve(FieldInfo field, UnityObject instance, out UnityObject result) {
             const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
+            if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
+            if (!resolveFields.TryGetValue(field, out var attributes)) {
+                attributes = field.GetCustomAttributes<ResolveAttribute>(true).ToArray();
+                resolveFields[field] = attributes.Length > 0 ? attributes : null;
+            }
+            if (attributes == null) {
+                result = null;
+                return false;
+            }
             if (!resolvingObjects.Add(instance))
                 throw new InvalidOperationException($"Circular reference detected on `{instance.name}`.");
             try {
-                if (resolvedObjects.TryGetValue((field, instance), out var result))
-                    return result;
-                var srcObj = instance;
+                result = instance;
                 for (int i = 0; i < attributes.Length; i++) {
-                    if (!srcObj) break;
+                    if (!result) break;
                     var srcPath = attributes[i].Source;
-                    var srcType = attributes[i].SourceType ?? srcObj.GetType();
+                    var srcType = attributes[i].SourceType ?? result.GetType();
                     int hashIndex = srcPath.IndexOf('#');
                     if (hashIndex >= 0) {
-                        srcObj = ResolvePath(srcPath.Substring(0, hashIndex), srcType == typeof(GameObject) ? typeof(Transform) : srcType, srcObj);
-                        if (!srcObj) break;
+                        result = ResolvePath(srcPath.Substring(0, hashIndex), srcType == typeof(GameObject) ? typeof(Transform) : srcType, result);
+                        if (!result) break;
                         srcPath = srcPath.Substring(hashIndex + 1);
                     }
-                    srcObj = ResolveToType(srcObj, srcType);
-                    if (!srcObj) break;
+                    result = ResolveToType(result, srcType);
+                    if (!result) break;
+                    if (srcType == typeof(UdonBehaviour)) {
+                        result = (result as UdonBehaviour).GetProgramVariable(srcPath) as UnityObject;
+                        continue;
+                    }
                     var targetField = srcType.GetField(srcPath, bindingFlags);
                     if (targetField != null) {
-                        if (resolveFields.TryGetValue(targetField, out var subAttributes))
-                            srcObj = Resolve(targetField, subAttributes, srcObj);
+                        if (TryResolve(targetField, result, out var resolved))
+                            result = resolved;
                         else
-                            srcObj = targetField.GetValue(srcObj) as UnityObject;
+                            result = targetField.GetValue(result) as UnityObject;
                         continue;
                     }
                     var targetProperty = srcType.GetProperty(srcPath, bindingFlags);
                     if (targetProperty != null) {
-                        srcObj = targetProperty.GetValue(srcObj) as UnityObject;
+                        result = targetProperty.GetValue(result) as UnityObject;
                         continue;
                     }
                 }
-                srcObj = ResolveToType(srcObj, field.FieldType);
-                resolvedObjects[(field, instance)] = srcObj;
-                return srcObj;
+                result = ResolveToType(result, field.FieldType);
+                resolvedObjects[(field, instance)] = result;
+                return true;
             } finally {
                 resolvingObjects.Remove(instance);
             }
