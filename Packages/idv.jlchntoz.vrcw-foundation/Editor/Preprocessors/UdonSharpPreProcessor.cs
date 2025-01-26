@@ -62,8 +62,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             var children = new Stack<Transform>();
             var flattenChildren = new Stack<Transform>();
             pending.Push((0, transform));
-            while (pending.Count > 0) {
-                var (depth, current) = pending.Pop();
+            while (pending.TryPop(out var entry)) {
+                var (depth, current) = entry;
                 if (depth >= pathElements.Length) {
                     if (srcType.IsAssignableFrom(current.GetType())) {
                         source = current;
