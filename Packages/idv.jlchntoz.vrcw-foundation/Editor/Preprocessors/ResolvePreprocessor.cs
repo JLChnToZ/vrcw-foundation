@@ -14,7 +14,6 @@ namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class ResolvePreprocessor : UdonSharpPreProcessor {
         readonly Dictionary<FieldInfo, ResolveAttribute[]> resolveFields = new Dictionary<FieldInfo, ResolveAttribute[]>();
         readonly Dictionary<(FieldInfo, UnityObject), UnityObject> resolvedObjects = new Dictionary<(FieldInfo, UnityObject), UnityObject>();
-        readonly HashSet<UnityObject> resolvingObjects = new HashSet<UnityObject>();
 
         public override int Priority => -1; // Earlier than binding preprocessor.
 
@@ -39,7 +38,6 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             try {
                 base.OnPreprocess(scene);
             } finally {
-                resolvingObjects.Clear();
                 resolvedObjects.Clear();
             }
         }
@@ -65,19 +63,15 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         bool TryResolve(FieldInfo field, UnityObject instance, out UnityObject result) {
             const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
-            if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
             if (!resolveFields.TryGetValue(field, out var attributes)) {
                 attributes = field.GetCustomAttributes<ResolveAttribute>(true).ToArray();
                 resolveFields[field] = attributes.Length > 0 ? attributes : null;
             }
-            if (attributes == null) {
-                result = null;
-                return false;
-            }
-            if (!resolvingObjects.Add(instance))
-                throw new InvalidOperationException($"Circular reference detected on `{instance.name}`.");
-            try {
+            if (attributes != null) {
+                if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
+                resolvedObjects[(field, instance)] = null; // Circular reference protection.
                 result = instance;
+                bool hasResolved = false;
                 for (int i = 0; i < attributes.Length; i++) {
                     if (!result) break;
                     var srcPath = attributes[i].Source;
@@ -92,6 +86,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     if (!result) break;
                     if (srcType == typeof(UdonBehaviour)) {
                         result = (result as UdonBehaviour).GetProgramVariable(srcPath) as UnityObject;
+                        hasResolved = true;
                         continue;
                     }
                     var targetField = srcType.GetField(srcPath, bindingFlags);
@@ -100,20 +95,23 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                             result = resolved;
                         else
                             result = targetField.GetValue(result) as UnityObject;
+                        hasResolved = true;
                         continue;
                     }
                     var targetProperty = srcType.GetProperty(srcPath, bindingFlags);
                     if (targetProperty != null) {
                         result = targetProperty.GetValue(result) as UnityObject;
+                        hasResolved = true;
                         continue;
                     }
                 }
-                result = ResolveToType(result, field.FieldType);
-                resolvedObjects[(field, instance)] = result;
-                return true;
-            } finally {
-                resolvingObjects.Remove(instance);
+                if (hasResolved) {
+                    resolvedObjects[(field, instance)] = result = ResolveToType(result, field.FieldType);
+                    return true;
+                }
             }
+            result = null;
+            return false;
         }
     }
 }
