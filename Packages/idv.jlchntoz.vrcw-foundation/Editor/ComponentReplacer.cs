@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 
 using static UnityEngine.Object;
 
@@ -60,21 +61,25 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         public static void InitAllComponents() {
-            #if UNITY_2022_2_OR_NEWER
-            int scneCount = SceneManager.loadedSceneCount;
-            #else
-            int scneCount = SceneManager.sceneCount;
-            #endif
+#if UNITY_2022_2_OR_NEWER
+            int sceneCount = SceneManager.loadedSceneCount;
+#else
+            int sceneCount = SceneManager.sceneCount;
+#endif
             var roots = new List<GameObject>();
             var temp = new List<Component>();
             var stack = new Stack<Transform>();
-            for (int i = 0; i < scneCount; i++) {
+            for (int i = 0; i < sceneCount; i++) {
                 SceneManager.GetSceneAt(i).GetRootGameObjects(roots);
                 foreach (var root in roots)
                     stack.Push(root.transform);
             }
-            while (stack.Count > 0) {
-                var current = stack.Pop();
+#if UNITY_2021_2_OR_NEWER
+            var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+            if (prefabStage != null)
+                stack.Push(prefabStage.prefabContentsRoot.transform);
+#endif
+            while (stack.TryPop(out var current)) {
                 for (int i = current.childCount - 1; i >= 0; i--)
                     stack.Push(current.GetChild(i));
                 current.GetComponents(temp);
@@ -98,7 +103,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         public static ICollection<(Component, string)> GetReferencedComponents(Component component) =>
             component != null && references.TryGetValue(component, out var mapping) ?
             mapping as ICollection<(Component, string)> : Array.Empty<(Component, string)>();
-        
+
         public static bool CanAllReferencesReplaceWith<T>(Component component) =>
             CanAllReferencesReplaceWith(component, typeof(T));
 
@@ -142,8 +147,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             var queue = new Queue<ComponentReplacer>();
             queue.Enqueue(this);
             componentsInTemporary = temporaryGameObject.GetComponents<Component>();
-            while (queue.Count > 0) {
-                var current = queue.Dequeue();
+            while (queue.TryDequeue(out var current)) {
                 foreach (var downstream in current.downstreams) queue.Enqueue(downstream);
                 current.componentsInTemporary = componentsInTemporary;
             }
@@ -153,13 +157,11 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             var stack = new Stack<ComponentReplacer>();
             var queue = new Queue<ComponentReplacer>();
             queue.Enqueue(this);
-            while (queue.Count > 0) {
-                var current = queue.Dequeue();
+            while (queue.TryDequeue(out var current)) {
                 stack.Push(current);
                 foreach (var downstream in current.downstreams) queue.Enqueue(downstream);
             }
-            while (stack.Count > 0) {
-                var current = stack.Pop();
+            while (stack.TryPop(out var current)) {
                 DestroyImmediate(current.componentsInGameObject[current.componentIndex]);
             }
         }
@@ -167,8 +169,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         void RestoreDependents(Component newAddedComponent = null) {
             var stack = new Stack<ComponentReplacer>();
             stack.Push(this);
-            while (stack.Count > 0) {
-                var current = stack.Pop();
+            while (stack.TryPop(out var current)) {
                 foreach (var downstream in current.downstreams) stack.Push(downstream);
                 Component temp = null;
                 if (current.componentIndex == componentIndex)
@@ -190,7 +191,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                                 var sp = so.FindProperty(path);
                                 sp.objectReferenceValue = temp;
                                 so.ApplyModifiedProperties();
-                            } catch {}
+                            } catch { }
                     }
             }
         }
@@ -201,8 +202,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             temporaryGameObject = null;
             var queue = new Queue<ComponentReplacer>();
             queue.Enqueue(this);
-            while (queue.Count > 0) {
-                var current = queue.Dequeue();
+            while (queue.TryDequeue(out var current)) {
                 foreach (var downstream in current.downstreams) queue.Enqueue(downstream);
                 current.componentsInTemporary = null;
             }

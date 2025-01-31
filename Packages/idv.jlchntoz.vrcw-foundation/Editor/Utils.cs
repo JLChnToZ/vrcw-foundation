@@ -85,6 +85,14 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (size == property.arraySize) property.DeleteArrayElementAtIndex(index);
         }
 
+        public static void DeleteElement<T>(ref T[] array, int index) {
+            if (index < 0 || index >= array.Length) return;
+            var newArray = new T[array.Length - 1];
+            Array.Copy(array, 0, newArray, 0, index);
+            if (index < array.Length - 1) Array.Copy(array, index + 1, newArray, index, array.Length - index - 1);
+            array = newArray;
+        }
+
         public static TDelegate ToDelegate<TDelegate>(this MethodInfo method, object target = null) where TDelegate : Delegate =>
             (TDelegate)(method.IsStatic ?
                 Delegate.CreateDelegate(typeof(TDelegate), method, false) :
@@ -110,12 +118,5 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             }
             return getFieldInfoAndStaticTypeFromProperty(property, out type);
         }
-
-#if !NETSTANDARD2_1
-        // Polyfill for old .NET Framework
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Contains(this string s, string value, StringComparison comparationType) =>
-            s.IndexOf(value, comparationType) >= 0;
-#endif
     }
 }

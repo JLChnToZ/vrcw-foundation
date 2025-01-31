@@ -12,7 +12,7 @@ using UnityObject = UnityEngine.Object;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class ResolvePreprocessor : UdonSharpPreProcessor {
-        readonly Dictionary<FieldInfo, ResolveAttribute[]> resolveFields = new Dictionary<FieldInfo, ResolveAttribute[]>();
+        static readonly Dictionary<FieldInfo, ResolveAttribute[]> resolveFields = new Dictionary<FieldInfo, ResolveAttribute[]>();
         readonly Dictionary<(FieldInfo, UnityObject), UnityObject> resolvedObjects = new Dictionary<(FieldInfo, UnityObject), UnityObject>();
 
         public override int Priority => -1; // Earlier than binding preprocessor.
@@ -32,6 +32,15 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     return result;
             }
             return null; // Unable to resolve.
+        }
+
+        static ResolveAttribute[] ResolveField(FieldInfo field) {
+            if (!resolveFields.TryGetValue(field, out var attributes)) {
+                attributes = field.GetCustomAttributes<ResolveAttribute>(true).ToArray();
+                if (attributes.Length == 0) attributes = null;
+                resolveFields[field] = attributes;
+            }
+            return attributes;
         }
 
         public override void OnPreprocess(Scene scene) {
@@ -61,13 +70,9 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             UdonSharpEditorUtility.CopyProxyToUdon(usharp);
         }
 
-        bool TryResolve(FieldInfo field, UnityObject instance, out UnityObject result) {
+        public bool TryResolve(FieldInfo field, UnityObject instance, out UnityObject result) {
             const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
-            if (!resolveFields.TryGetValue(field, out var attributes)) {
-                attributes = field.GetCustomAttributes<ResolveAttribute>(true).ToArray();
-                if (attributes.Length == 0) attributes = null;
-                resolveFields[field] = attributes;
-            }
+            var attributes = ResolveField(field);
             if (attributes != null) {
                 if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
                 resolvedObjects[(field, instance)] = null; // Circular reference protection.
@@ -113,6 +118,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             }
             result = null;
             return false;
+        }
+
+        public void ClearCache() {
+            resolvedObjects.Clear();
         }
     }
 }

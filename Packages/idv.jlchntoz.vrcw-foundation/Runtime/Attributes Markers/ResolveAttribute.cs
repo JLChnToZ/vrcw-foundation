@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace JLChnToZ.VRC.Foundation {
     /// <summary>
@@ -9,7 +10,7 @@ namespace JLChnToZ.VRC.Foundation {
     /// it will recursively resolve the field from the path until it reaches the last one.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
-    public class ResolveAttribute : Attribute {
+    public class ResolveAttribute : PropertyAttribute {
         /// <summary>
         /// The path to resolve the field from.
         /// </summary>
@@ -26,6 +27,12 @@ namespace JLChnToZ.VRC.Foundation {
         /// Default is <c>true</c>.
         /// </summary>
         public bool NullOnly { get; set; }
+
+        /// <summary>
+        /// Should hide the field in the inspector if it is resolvable,
+        /// that is, the source object is found.
+        /// </summary>
+        public bool HideInInspectorIfResolvable { get; set; }
 
         /// <summary>
         /// Mark a field to be auto resolved from a path on build time.

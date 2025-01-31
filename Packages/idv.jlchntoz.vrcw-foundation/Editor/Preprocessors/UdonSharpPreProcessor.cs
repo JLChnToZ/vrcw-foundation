@@ -49,7 +49,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         static bool IsAssignable<T>(FieldInfo field) => typeof(T).IsAssignableFrom(field.FieldType);
 
-        protected static UnityObject ResolvePath(string path, Type srcType, UnityObject source) {
+        public static UnityObject ResolvePath(string path, Type srcType, UnityObject source) {
             var pathElements = path.Split('/');
             if (source is Transform transform) {}
             else if (source is Component component)
