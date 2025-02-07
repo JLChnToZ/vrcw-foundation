@@ -118,5 +118,93 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             }
             return getFieldInfoAndStaticTypeFromProperty(property, out type);
         }
+
+        public static bool IsValid(this object obj) {
+            if (obj == null) return false;
+            if (obj is UnityObject unityObj) return unityObj;
+            return true;
+        }
+
+        public static void SetBoxedValue(this SerializedProperty serializedProperty, object value) {
+#if UNITY_2022_1_OR_NEWER
+            serializedProperty.boxedValue = value;
+#else
+            switch (serializedProperty.propertyType) {
+                case SerializedPropertyType.Character:
+                    serializedProperty.intValue = Convert.ToUInt16(value);
+                    break;
+                case SerializedPropertyType.Integer:
+                case SerializedPropertyType.Enum:
+                case SerializedPropertyType.ArraySize:
+                    serializedProperty.longValue = Convert.ToInt64(value);
+                    break;
+                case SerializedPropertyType.Boolean:
+                    serializedProperty.boolValue = Convert.ToBoolean(value);
+                    break;
+                case SerializedPropertyType.Float:
+                    serializedProperty.doubleValue = Convert.ToDouble(value);
+                    break;
+                case SerializedPropertyType.String:
+                    serializedProperty.stringValue = Convert.ToString(value);
+                    break;
+                case SerializedPropertyType.Color:
+                    serializedProperty.colorValue = (Color)value;
+                    break;
+                case SerializedPropertyType.ObjectReference:
+                    serializedProperty.objectReferenceValue = (UnityObject)value;
+                    break;
+                case SerializedPropertyType.ExposedReference:
+                    serializedProperty.exposedReferenceValue = (UnityObject)value;
+                    break;
+                case SerializedPropertyType.ManagedReference:
+                    serializedProperty.managedReferenceValue = value;
+                    break;
+                case SerializedPropertyType.LayerMask:
+                    serializedProperty.intValue = (int)value;
+                    break;
+                case SerializedPropertyType.Vector2:
+                    serializedProperty.vector2Value = (Vector2)value;
+                    break;
+                case SerializedPropertyType.Vector3:
+                    serializedProperty.vector3Value = (Vector3)value;
+                    break;
+                case SerializedPropertyType.Vector4:
+                    serializedProperty.vector4Value = (Vector4)value;
+                    break;
+                case SerializedPropertyType.Rect:
+                    serializedProperty.rectValue = (Rect)value;
+                    break;
+                case SerializedPropertyType.AnimationCurve:
+                    serializedProperty.animationCurveValue = (AnimationCurve)value;
+                    break;
+                case SerializedPropertyType.Bounds:
+                    serializedProperty.boundsValue = (Bounds)value;
+                    break;
+                case SerializedPropertyType.Gradient:
+                    serializedProperty.gradientValue = (Gradient)value;
+                    break;
+                case SerializedPropertyType.Quaternion:
+                    serializedProperty.quaternionValue = (Quaternion)value;
+                    break;
+                case SerializedPropertyType.Vector2Int:
+                    serializedProperty.vector2IntValue = (Vector2Int)value;
+                    break;
+                case SerializedPropertyType.Vector3Int:
+                    serializedProperty.vector3IntValue = (Vector3Int)value;
+                    break;
+                case SerializedPropertyType.RectInt:
+                    serializedProperty.rectIntValue = (RectInt)value;
+                    break;
+                case SerializedPropertyType.BoundsInt:
+                    serializedProperty.boundsIntValue = (BoundsInt)value;
+                    break;
+#if UNITY_2021_1_OR_NEWER
+                case SerializedPropertyType.Hash128:
+                    serializedProperty.hash128Value = (Hash128)value;
+                    break;
+#endif
+            }
+#endif
+        }
     }
 }

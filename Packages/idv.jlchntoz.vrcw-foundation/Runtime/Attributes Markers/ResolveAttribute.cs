@@ -39,8 +39,8 @@ namespace JLChnToZ.VRC.Foundation {
         /// </summary>
         /// <param name="source">The path to resolve the field from.</param>
         /// <remarks>
-        /// It supports glob-like path. For example, `/Some Root/**/Some Object#someProp` will resolve
-        /// the `someProp` from the first object named `Some Object` in the hierarchy under `Some Root`.
+        /// It supports glob-like path and dot chaining. For example, `/Some Root/**/Some Object#someProp.prop2` will resolve
+        /// the `someProp` from the first object named `Some Object` in the hierarchy under `Some Root`, then resolve `prop2` from it.
         /// </remarks>
         public ResolveAttribute(string source) {
             Source = source;

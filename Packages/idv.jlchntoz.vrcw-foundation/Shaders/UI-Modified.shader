@@ -12,7 +12,7 @@ Shader "UI/Modified" {
 
         [Header(Conditional Appearance in VRChat Camera Mirror)]
         [Toggle(_VRC_SUPPORT)] _VRCSupport ("Enable", Int) = 0
-        [EnumMask(Direct Look, VR Handheld Camera, Desktop Handheld Camera, Screen Shot, VR Mirror, VR Handheld Camera in Mirror, # INVALID #, VR Screen Shot in Mirror, Desktop Mirror, # INVALID #, Desktop Handheld Camera in Mirror, Desktop Screen Shot in Mirror)]
+        [EnumMask(Direct Look, VR Handheld Camera, Desktop Handheld Camera, Screenshot, VR Mirror, VR Handheld Camera in Mirror, _, VR Screenshot in Mirror, Desktop Mirror, _, Desktop Handheld Camera in Mirror, Desktop Screenshot in Mirror)]
         _RenderMode ("Visible Modes", Int) = 4095
         [Toggle(_)] _MirrorFlip ("Flip in Mirror", Int) = 0
 
@@ -27,7 +27,7 @@ Shader "UI/Modified" {
         [Space]
         [Enum(UnityEngine.Rendering.CompareFunction)] unity_GUIZTestMode("Z Test Mode", Int) = 4
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Int) = 2
-        [Enum(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
+        [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
     }
 
     SubShader {

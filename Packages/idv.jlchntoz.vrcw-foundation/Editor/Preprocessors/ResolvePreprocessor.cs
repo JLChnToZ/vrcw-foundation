@@ -13,12 +13,12 @@ using UnityObject = UnityEngine.Object;
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class ResolvePreprocessor : UdonSharpPreProcessor {
         static readonly Dictionary<FieldInfo, ResolveAttribute[]> resolveFields = new Dictionary<FieldInfo, ResolveAttribute[]>();
-        readonly Dictionary<(FieldInfo, UnityObject), UnityObject> resolvedObjects = new Dictionary<(FieldInfo, UnityObject), UnityObject>();
+        readonly Dictionary<(FieldInfo, UnityObject), object> resolvedObjects = new Dictionary<(FieldInfo, UnityObject), object>();
 
         public override int Priority => -1; // Earlier than binding preprocessor.
 
-        static UnityObject ResolveToType(UnityObject src, Type destType) {
-            if (!src) return null;
+        static object ResolveToType(object src, Type destType) {
+            if (!src.IsValid()) return null;
             if (destType == null || destType.IsInstanceOfType(src)) return src;
             if (src is GameObject gameObject) {
                 if (typeof(Component).IsAssignableFrom(destType) &&
@@ -56,8 +56,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             using (var so = new SerializedObject(usharp)) {
                 foreach (var field in GetFields<ResolveAttribute>(type)) {
                     try {
-                        if (TryResolve(field, usharp, out var resolved) && field.GetValue(usharp) as UnityObject != resolved) {
-                            so.FindProperty(field.Name).objectReferenceValue = resolved;
+                        if (TryResolve(field, usharp, out var resolved) && !Equals(resolved, field.GetValue(usharp))) {
+                            so.FindProperty(field.Name).SetBoxedValue(resolved);
                             changed = true;
                         }
                     } catch (Exception ex) {
@@ -70,7 +70,11 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             UdonSharpEditorUtility.CopyProxyToUdon(usharp);
         }
 
-        public bool TryResolve(FieldInfo field, UnityObject instance, out UnityObject result) {
+        public bool TryResolve(FieldInfo field, UnityObject instance, out object result) {
+            if (!instance.IsValid()) {
+                result = null;
+                return false;
+            }
             const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
             var attributes = ResolveField(field);
             if (attributes != null) {
@@ -79,36 +83,54 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 result = instance;
                 bool hasResolved = false;
                 for (int i = 0; i < attributes.Length; i++) {
-                    if (!result) break;
+                    if (!result.IsValid()) break;
                     var srcPath = attributes[i].Source;
                     var srcType = attributes[i].SourceType ?? result.GetType();
                     int hashIndex = srcPath.IndexOf('#');
                     if (hashIndex >= 0) {
-                        result = ResolvePath(srcPath.Substring(0, hashIndex), srcType == typeof(GameObject) ? typeof(Transform) : srcType, result);
-                        if (!result) break;
+                        result = ResolvePath(srcPath.Substring(0, hashIndex), srcType == typeof(GameObject) ? typeof(Transform) : srcType, result as UnityObject);
+                        if (!result.IsValid()) break;
                         srcPath = srcPath.Substring(hashIndex + 1);
+                    } else if (string.IsNullOrWhiteSpace(srcPath) || srcPath == "." || srcPath == "this") {
+                        // Resolve to self, do nothing here.
+                        srcPath = null;
+                        hasResolved = true;
+                    } else if (srcPath.Contains('*') || srcPath.Contains('/')) {
+                        result = ResolvePath(srcPath, srcType, result as UnityObject);
+                        srcPath = null;
+                        hasResolved = true;
                     }
                     result = ResolveToType(result, srcType);
-                    if (!result) break;
-                    if (srcType == typeof(UdonBehaviour)) {
-                        result = (result as UdonBehaviour).GetProgramVariable(srcPath) as UnityObject;
-                        hasResolved = true;
-                        continue;
-                    }
-                    var targetField = srcType.GetField(srcPath, bindingFlags);
-                    if (targetField != null) {
-                        if (TryResolve(targetField, result, out var resolved))
-                            result = resolved;
-                        else
-                            result = targetField.GetValue(result) as UnityObject;
-                        hasResolved = true;
-                        continue;
-                    }
-                    var targetProperty = srcType.GetProperty(srcPath, bindingFlags);
-                    if (targetProperty != null) {
-                        result = targetProperty.GetValue(result) as UnityObject;
-                        hasResolved = true;
-                        continue;
+                    while (result.IsValid() && !string.IsNullOrEmpty(srcPath)) {
+                        string propertyName;
+                        int index = srcPath.IndexOf('.');
+                        if (index >= 0) {
+                            propertyName = srcPath.Substring(0, index);
+                            srcPath = srcPath.Substring(index + 1);
+                        } else {
+                            propertyName = srcPath;
+                            srcPath = null;
+                        }
+                        if (srcType == typeof(UdonBehaviour)) {
+                            result = (result as UdonBehaviour).GetProgramVariable(propertyName) as UnityObject;
+                            hasResolved = true;
+                            continue;
+                        }
+                        var targetField = srcType.GetField(propertyName, bindingFlags);
+                        if (targetField != null) {
+                            if (result is UnityObject unityObj && TryResolve(targetField, unityObj, out var resolved))
+                                result = resolved;
+                            else
+                                result = targetField.GetValue(result) as UnityObject;
+                            hasResolved = true;
+                            continue;
+                        }
+                        var targetProperty = srcType.GetProperty(propertyName, bindingFlags);
+                        if (targetProperty != null) {
+                            result = targetProperty.GetValue(result) as UnityObject;
+                            hasResolved = true;
+                            continue;
+                        }
                     }
                 }
                 if (hasResolved) {
