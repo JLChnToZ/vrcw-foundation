@@ -113,6 +113,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         }
                         if (srcType == typeof(UdonBehaviour)) {
                             result = (result as UdonBehaviour).GetProgramVariable(propertyName);
+                            srcType = result == null ? typeof(object) : result.GetType();
                             hasResolved = true;
                             continue;
                         }
@@ -122,12 +123,14 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                                 result = resolved;
                             else
                                 result = targetField.GetValue(result);
+                            srcType = targetField.FieldType;
                             hasResolved = true;
                             continue;
                         }
                         var targetProperty = srcType.GetProperty(propertyName, bindingFlags);
                         if (targetProperty != null) {
                             result = targetProperty.GetValue(result);
+                            srcType = targetProperty.PropertyType;
                             hasResolved = true;
                             continue;
                         }
