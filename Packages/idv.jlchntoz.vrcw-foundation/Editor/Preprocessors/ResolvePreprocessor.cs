@@ -119,18 +119,20 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         }
                         var targetField = srcType.GetField(propertyName, bindingFlags);
                         if (targetField != null) {
+                            srcType = targetField.FieldType;
                             if (result is UnityObject unityObj && TryResolve(targetField, unityObj, out var resolved))
                                 result = resolved;
                             else
                                 result = targetField.GetValue(result);
-                            srcType = targetField.FieldType;
+                            if (result != null) srcType = result.GetType();
                             hasResolved = true;
                             continue;
                         }
                         var targetProperty = srcType.GetProperty(propertyName, bindingFlags);
                         if (targetProperty != null) {
-                            result = targetProperty.GetValue(result);
                             srcType = targetProperty.PropertyType;
+                            result = targetProperty.GetValue(result);
+                            if (result != null) srcType = result.GetType();
                             hasResolved = true;
                             continue;
                         }
