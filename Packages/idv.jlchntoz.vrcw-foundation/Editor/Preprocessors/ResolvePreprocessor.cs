@@ -112,7 +112,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                             srcPath = null;
                         }
                         if (srcType == typeof(UdonBehaviour)) {
-                            result = (result as UdonBehaviour).GetProgramVariable(propertyName) as UnityObject;
+                            result = (result as UdonBehaviour).GetProgramVariable(propertyName);
                             hasResolved = true;
                             continue;
                         }
@@ -121,16 +121,17 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                             if (result is UnityObject unityObj && TryResolve(targetField, unityObj, out var resolved))
                                 result = resolved;
                             else
-                                result = targetField.GetValue(result) as UnityObject;
+                                result = targetField.GetValue(result);
                             hasResolved = true;
                             continue;
                         }
                         var targetProperty = srcType.GetProperty(propertyName, bindingFlags);
                         if (targetProperty != null) {
-                            result = targetProperty.GetValue(result) as UnityObject;
+                            result = targetProperty.GetValue(result);
                             hasResolved = true;
                             continue;
                         }
+                        break;
                     }
                 }
                 if (hasResolved) {
