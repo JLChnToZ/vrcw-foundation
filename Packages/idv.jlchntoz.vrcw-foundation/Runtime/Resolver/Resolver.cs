@@ -10,8 +10,21 @@ using UnityObject = UnityEngine.Object;
 
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     /// <summary>
-    /// Glob-like path resolver.
+    /// A generic resolver to resolve object from a given path.
     /// </summary>
+    /// <remarks>
+    /// This resolver supports both property and hierarchy resolution.
+    /// You may use glob-like pattern
+    /// (<c>/</c> for path entry separation,
+    /// <c>..</c> for parent,
+    /// <c>..*</c> for any parent,
+    /// <c>*</c> for wildcard,
+    /// <c>**</c> for any children)
+    /// to resolve in hierarchy,
+    /// and use dot (<c>.</c>) to resolve properties.
+    /// To combine-resolve through properties and hierarchy, you may use <c>#</c> to separate them.
+    /// By default it will treat the pattern is property goes first if no path separator is found.
+    /// </remarks>
     public class Resolver : IEquatable<Resolver> {
         static readonly Dictionary<(string, Type), IResolverCommand[]> cache = new Dictionary<(string, Type), IResolverCommand[]>();
         static readonly HashSet<IResolverCommand[]> iteratingCommands = new HashSet<IResolverCommand[]>();
@@ -20,6 +33,9 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
         readonly Type destinationType;
         IResolverCommand[] commands;
 
+        /// <summary>
+        /// Register a custom resolve provider.
+        /// </summary>
         public static event TryResolveMemberDelegate CustomResolveProvider {
             add => customResolvers.Add(value);
             remove => customResolvers.Remove(value);
@@ -150,8 +166,19 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             }
         }
 
+        /// <summary>
+        /// Resolve the path from the given object.
+        /// </summary>
+        /// <param name="from">The object to resolve from.</param>
+        /// <returns>An enumerable object that will iterate through all resolved objects.</returns>
         public ResolveResults Resolve(object from) => new ResolveResults(this, from);
 
+        /// <summary>
+        /// Try to resolve the path from the given object.
+        /// </summary>
+        /// <param name="from">The object to resolve from.</param>
+        /// <param name="result">The resolved object.</param>
+        /// <returns><c>true</c> if the path is resolved successfully, otherwise <c>false</c>.</returns>
         public bool TryResolve(object from, out object result) => Resolve(from).TryOne(out result);
 
         public override string ToString() =>
@@ -167,8 +194,22 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
 
         public override int GetHashCode() => HashCode.Combine(path, destinationType);
 
+        /// <summary>
+        /// Custom resolve delegate.
+        /// </summary>
+        /// <param name="from">The object to resolve from.</param>
+        /// <param name="memberName">The member name to resolve.</param>
+        /// <param name="member">The member info to resolve.</param>
+        /// <param name="result">The resolved object.</param>
+        /// <returns><c>true</c> if the member is resolved successfully, otherwise <c>false</c>.</returns>
+        /// <remarks>
+        /// It will fallback to the default resolve behavior if all custom resolve delegates return <c>false</c>.
+        /// </remarks>
         public delegate bool TryResolveMemberDelegate(object from, string memberName, MemberInfo member, out object result);
 
+        /// <summary>
+        /// An enumerable object that will iterate through all resolved objects.
+        /// </summary>
         public readonly struct ResolveResults : IEnumerable {
             readonly Resolver resolver;
             readonly object from;
@@ -178,6 +219,11 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 this.resolver = resolver;
             }
 
+            /// <summary>
+            /// Try to get the first resolved object.
+            /// </summary>
+            /// <param name="result">The resolved object.</param>
+            /// <returns><c>true</c> if the path is resolved successfully, otherwise <c>false</c>.</returns>
             public bool TryOne(out object result) {
                 using (var results = GetEnumerator())
                     if (results.MoveNext()) {
@@ -188,11 +234,21 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 return false;
             }
 
+            /// <summary>
+            /// Get the enumerator to iterate through all resolved objects.
+            /// </summary>
+            /// <returns>The enumerator to iterate through all resolved objects.</returns>
+            /// <remarks>
+            /// Usually, you should use <c>foreach</c> instead of calling this method directly.
+            /// </remarks>
             public ResolveResultsEnumerator GetEnumerator() => new ResolveResultsEnumerator(resolver, from);
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
+        /// <summary>
+        /// An enumerator to iterate through all resolved objects.
+        /// </summary>
         public struct ResolveResultsEnumerator : IEnumerator, IDisposable {
             readonly IResolverCommand[] commands;
             readonly object[] states;
@@ -201,6 +257,9 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             readonly bool isClonned;
             int index;
 
+            /// <summary>
+            /// Get the yielded resolved object.
+            /// </summary>
             public object Current => states[count];
 
             public ResolveResultsEnumerator(Resolver resolver, object from) {
@@ -222,29 +281,35 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 Reset();
             }
 
+            /// <summary>
+            /// Resolve the next object from current state.
+            /// </summary>
+            /// <returns><c>true</c> if the next object is resolved successfully, otherwise <c>false</c>.</returns>
             public bool MoveNext() {
-                while (index >= 0 && index < count) {
+                while (index >= 0 && index < count)
                     if (commands[index].Next(out var result)) {
                         index++;
                         states[index] = result;
-                        if (index >= count) {
-                            return true;
-                        }
+                        if (index >= count) return true;
                         commands[index].Reset(result);
                     } else {
                         index--;
                     }
-                }
                 return false;
             }
 
+            /// <summary>
+            /// Reset the enumerator to the initial state.
+            /// </summary>
             public void Reset() {
-                if (index > 0) Array.Clear(states, 0, count + 1);
                 index = 0;
                 commands[0].Reset(from);
                 states[0] = from;
             }
 
+            /// <summary>
+            /// Dispose the enumerator. Release the resources.
+            /// </summary>
             public void Dispose() {
                 ArrayPool<object>.Shared.Return(states);
                 iteratingCommands.Remove(commands);
