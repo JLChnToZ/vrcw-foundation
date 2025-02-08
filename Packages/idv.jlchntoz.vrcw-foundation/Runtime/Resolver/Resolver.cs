@@ -292,9 +292,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         states[index] = result;
                         if (index >= count) return true;
                         commands[index].Reset(result);
-                    } else {
-                        index--;
-                    }
+                    } else index--;
                 return false;
             }
 
@@ -383,18 +381,16 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             public void Reset(object from) {
                 queue.Clear();
                 if (from is Transform transform)
-                    queue.Enqueue(transform);
+                    EnqueueChildren(transform);
                 else if (from is GameObject gameObject)
-                    queue.Enqueue(gameObject.transform);
+                    EnqueueChildren(gameObject.transform);
                 else if (from is Component component)
-                    queue.Enqueue(component.transform);
+                    EnqueueChildren(component.transform);
             }
 
             public bool Next(out object result) {
                 if (queue.TryDequeue(out var current)) {
-                    if (chained)
-                        for (int i = 0, count = current.childCount; i < count; i++)
-                            queue.Enqueue(current.GetChild(i));
+                    if (chained) EnqueueChildren(current);
                     result = current;
                     return true;
                 }
@@ -403,6 +399,11 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             }
 
             public object Clone() => new HierarchyAnyChildCommand(chained);
+
+            void EnqueueChildren(Transform transform) {
+                for (int i = 0, count = transform.childCount; i < count; i++)
+                    queue.Enqueue(transform.GetChild(i));
+            }
         }
 
         sealed class HierarchyRootCommand : IResolverCommand {
