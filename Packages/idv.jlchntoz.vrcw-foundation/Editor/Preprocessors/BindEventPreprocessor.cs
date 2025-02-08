@@ -9,11 +9,12 @@ using UnityEngine.Events;
 using UnityEditor.Events;
 using UnityEditor.Callbacks;
 
+using VRC.Udon;
 using VRC.Udon.Editor;
 using UdonSharp;
+using JLChnToZ.VRC.Foundation.Resolvers;
 
 using UnityObject = UnityEngine.Object;
-using VRC.Udon;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class BindEventPreprocessor : UdonSharpPreProcessor {
@@ -54,19 +55,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         static void BindSingleEvent(UnityObject targetObj, Type srcType, BindEventAttribute attribute, UnityAction<string> call, int index) {
             var srcPath = attribute.Source;
-            int hashIndex = srcPath.IndexOf('#');
-            if (hashIndex >= 0) {
-                targetObj = ResolvePath(srcPath.Substring(0, hashIndex), srcType, targetObj);
-                srcPath = srcPath.Substring(hashIndex + 1);
-            } else if (!srcType.IsAssignableFrom(targetObj.GetType())) {
-                if (targetObj is GameObject gameObject)
-                    targetObj = gameObject.GetComponent(srcType);
-                else if (targetObj is Component component)
-                    targetObj = component.GetComponent(srcType);
-                else
-                    targetObj = null;
-            }
-            if (TryGetValue(targetObj, srcType, srcPath, out var otherObj) && otherObj is UnityEventBase callback) {
+            foreach (var otherObj in new Resolver(srcPath, srcType).Resolve(targetObj))
+            if (otherObj is UnityEventBase callback) {
                 var targetEventName = string.Format(attribute.Destination, index, targetObj.name);
                 if (!hasTypeNameMappingInit) {
                     foreach (var def in UdonEditorManager.Instance.GetNodeDefinitions()) {
@@ -78,6 +68,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 if (typeNameMapping.TryGetValue(targetEventName, out var mappedEventName))
                     targetEventName = mappedEventName;
                 UnityEventTools.AddStringPersistentListener(callback, call, targetEventName);
+                break;
             }
         }
 

@@ -9,6 +9,7 @@ using VRC.Udon;
 using UdonSharp;
 using UdonSharpEditor;
 using UnityObject = UnityEngine.Object;
+using JLChnToZ.VRC.Foundation.Resolvers;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class ResolvePreprocessor : UdonSharpPreProcessor {
@@ -45,9 +46,11 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         public override void OnPreprocess(Scene scene) {
             try {
+                Resolver.CustomResolveProvider += TryResolveHook;
                 base.OnPreprocess(scene);
             } finally {
                 resolvedObjects.Clear();
+                Resolver.CustomResolveProvider -= TryResolveHook;
             }
         }
 
@@ -56,7 +59,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             using (var so = new SerializedObject(usharp)) {
                 foreach (var field in GetFields<ResolveAttribute>(type)) {
                     try {
-                        if (TryResolve(field, usharp, out var resolved) && !Equals(resolved, field.GetValue(usharp))) {
+                        if (TryResolveUnchecked(field, usharp, out var resolved) && !Equals(resolved, field.GetValue(usharp))) {
                             so.FindProperty(field.Name).SetBoxedValue(resolved);
                             changed = true;
                         }
@@ -71,11 +74,26 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         public bool TryResolve(FieldInfo field, UnityObject instance, out object result) {
+            try {
+                Resolver.CustomResolveProvider += TryResolveHook;
+                return TryResolveUnchecked(field, instance, out result);
+            } finally {
+                Resolver.CustomResolveProvider -= TryResolveHook;
+            }
+        }
+
+        bool TryResolveHook(object source, string memberName, MemberInfo member, out object result) {
+            if (member is FieldInfo fieldInfo && source is UnityObject unityObject)
+                return TryResolveUnchecked(fieldInfo, unityObject, out result);
+            result = null;
+            return false;
+        }
+
+        bool TryResolveUnchecked(FieldInfo field, UnityObject instance, out object result) {
             if (!instance.IsValid()) {
                 result = null;
                 return false;
             }
-            const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
             var attributes = ResolveField(field);
             if (attributes != null) {
                 if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
@@ -86,58 +104,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     if (!result.IsValid()) break;
                     var srcPath = attributes[i].Source;
                     var srcType = attributes[i].SourceType ?? result.GetType();
-                    int hashIndex = srcPath.IndexOf('#');
-                    if (hashIndex >= 0) {
-                        result = ResolvePath(srcPath.Substring(0, hashIndex), srcType == typeof(GameObject) ? typeof(Transform) : srcType, result as UnityObject);
-                        if (!result.IsValid()) break;
-                        srcPath = srcPath.Substring(hashIndex + 1);
-                    } else if (string.IsNullOrWhiteSpace(srcPath) || srcPath == "." || srcPath == "this") {
-                        // Resolve to self, do nothing here.
-                        srcPath = null;
+                    if (new Resolver(srcPath, srcType).TryResolve(result, out result))
                         hasResolved = true;
-                    } else if (srcPath.Contains('*') || srcPath.Contains('/')) {
-                        result = ResolvePath(srcPath, srcType, result as UnityObject);
-                        srcPath = null;
-                        hasResolved = true;
-                    }
-                    result = ResolveToType(result, srcType);
-                    while (result.IsValid() && !string.IsNullOrEmpty(srcPath)) {
-                        string propertyName;
-                        int index = srcPath.IndexOf('.');
-                        if (index >= 0) {
-                            propertyName = srcPath.Substring(0, index);
-                            srcPath = srcPath.Substring(index + 1);
-                        } else {
-                            propertyName = srcPath;
-                            srcPath = null;
-                        }
-                        if (srcType == typeof(UdonBehaviour)) {
-                            result = (result as UdonBehaviour).GetProgramVariable(propertyName);
-                            srcType = result == null ? typeof(object) : result.GetType();
-                            hasResolved = true;
-                            continue;
-                        }
-                        var targetField = srcType.GetField(propertyName, bindingFlags);
-                        if (targetField != null) {
-                            srcType = targetField.FieldType;
-                            if (result is UnityObject unityObj && TryResolve(targetField, unityObj, out var resolved))
-                                result = resolved;
-                            else
-                                result = targetField.GetValue(result);
-                            if (result != null) srcType = result.GetType();
-                            hasResolved = true;
-                            continue;
-                        }
-                        var targetProperty = srcType.GetProperty(propertyName, bindingFlags);
-                        if (targetProperty != null) {
-                            srcType = targetProperty.PropertyType;
-                            result = targetProperty.GetValue(result);
-                            if (result != null) srcType = result.GetType();
-                            hasResolved = true;
-                            continue;
-                        }
-                        break;
-                    }
                 }
                 if (hasResolved) {
                     resolvedObjects[(field, instance)] = result = ResolveToType(result, field.FieldType);
