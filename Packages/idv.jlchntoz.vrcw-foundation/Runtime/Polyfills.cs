@@ -26,6 +26,7 @@ namespace JLChnToZ.VRC.Foundation {
         /// <typeparam name="T">The type of the item in the stack.</typeparam>
         /// <param name="stack">The stack to pop from.</param>
         /// <param name="result">The popped item.</param>
+        /// <returns><c>true</c> if the stack is not empty; otherwise, <c>false</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryPop<T>(this Stack<T> stack, out T result) {
             if (stack.Count == 0) {
@@ -42,6 +43,7 @@ namespace JLChnToZ.VRC.Foundation {
         /// <typeparam name="T">The type of the item in the queue.</typeparam>
         /// <param name="queue">The queue to dequeue from.</param>
         /// <param name="result">The dequeued item.</param>
+        /// <returns><c>true</c> if the queue is not empty; otherwise, <c>false</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryDequeue<T>(this Queue<T> queue, out T result) {
             if (queue.Count == 0) {
@@ -49,6 +51,40 @@ namespace JLChnToZ.VRC.Foundation {
                 return false;
             }
             result = queue.Dequeue();
+            return true;
+        }
+
+        /// <summary>
+        /// (Added in .NET Standard 2.1) Try to peek an item from the queue.
+        /// </summary>
+        /// <typeparam name="T">The type of the item in the queue.</typeparam>
+        /// <param name="queue">The queue to peek from.</param>
+        /// <param name="result">The peeked item.</param>
+        /// <returns><c>true</c> if the queue is not empty; otherwise, <c>false</c>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool TryPeek<T>(this Queue<T> queue, out T result) {
+            if (queue.Count == 0) {
+                result = default;
+                return false;
+            }
+            result = queue.Peek();
+            return true;
+        }
+
+        /// <summary>
+        /// (Added in .NET Standard 2.1) Try to peek an item from the stack.
+        /// </summary>
+        /// <typeparam name="T">The type of the item in the stack.</typeparam>
+        /// <param name="stack">The stack to peek from.</param>
+        /// <param name="result">The peeked item.</param>
+        /// <returns><c>true</c> if the stack is not empty; otherwise, <c>false</c>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool TryPeek<T>(this Stack<T> stack, out T result) {
+            if (stack.Count == 0) {
+                result = default;
+                return false;
+            }
+            result = stack.Peek();
             return true;
         }
 #endif

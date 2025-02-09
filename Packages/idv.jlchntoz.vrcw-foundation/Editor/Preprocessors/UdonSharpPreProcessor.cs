@@ -9,8 +9,6 @@ using VRC.Udon;
 using UdonSharp;
 using UdonSharpEditor;
 
-using UnityObject = UnityEngine.Object;
-
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal abstract class UdonSharpPreProcessor : IPreprocessor {
         protected static readonly Dictionary<Type, MonoScript> scriptMap = new Dictionary<Type, MonoScript>();
