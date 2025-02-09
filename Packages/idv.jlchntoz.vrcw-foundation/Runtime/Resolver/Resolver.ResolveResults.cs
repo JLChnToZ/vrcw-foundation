@@ -74,7 +74,8 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             public object Current => states[count - 1].Current;
 
             public ResolveResultsEnumerator(Resolver resolver, object from) {
-                if (resolver.commands == null) resolver.ParsePath();
+                if (resolver.commands == null)
+                    resolver.commands = resolver.commandList.ToArray();
                 this.from = from;
                 commands = resolver.commands;
                 count = commands.Length;
@@ -117,7 +118,6 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             /// </summary>
             public void Dispose() {
                 ArrayPool<ICommandState>.Shared.Return(states);
-                iteratingCommands.Remove(commands);
             }
         }
     }

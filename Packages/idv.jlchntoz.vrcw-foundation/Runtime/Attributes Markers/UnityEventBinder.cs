@@ -33,7 +33,7 @@ namespace JLChnToZ.VRC.Foundation {
     /// </list>
     /// </remarks>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Class, AllowMultiple = true, Inherited = true)]
-    public class BindEventAttribute : Attribute {
+    public class BindEventAttribute : Attribute, IEquatable<BindEventAttribute> {
         /// <summary>
         /// The source event name. (That is the property name of the event)
         /// </summary>
@@ -58,5 +58,15 @@ namespace JLChnToZ.VRC.Foundation {
         public BindEventAttribute(Type sourceType, string source, string destination) : this(source, destination) {
             SourceType = sourceType;
         }
+
+        public bool Equals(BindEventAttribute other) =>
+            other != null &&
+            Source == other.Source &&
+            Destination == other.Destination &&
+            SourceType == other.SourceType;
+
+        public override bool Equals(object obj) => obj is BindEventAttribute other && Equals(other);
+
+        public override int GetHashCode() => HashCode.Combine(Source, Destination, SourceType);
     }
 }

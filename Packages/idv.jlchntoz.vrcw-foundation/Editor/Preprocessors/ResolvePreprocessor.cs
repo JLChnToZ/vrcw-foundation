@@ -13,35 +13,39 @@ using JLChnToZ.VRC.Foundation.Resolvers;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class ResolvePreprocessor : UdonSharpPreProcessor {
-        static readonly Dictionary<FieldInfo, ResolveAttribute[]> resolveFields = new Dictionary<FieldInfo, ResolveAttribute[]>();
+        static readonly Dictionary<FieldInfo, Resolver> resolveFields = new Dictionary<FieldInfo, Resolver>();
         readonly Dictionary<(FieldInfo, UnityObject), object> resolvedObjects = new Dictionary<(FieldInfo, UnityObject), object>();
 
         public override int Priority => -1; // Earlier than binding preprocessor.
 
-        static object ResolveToType(object src, Type destType) {
-            if (!src.IsValid()) return null;
-            if (destType == null || destType.IsInstanceOfType(src)) return src;
-            if (src is GameObject gameObject) {
-                if (typeof(Component).IsAssignableFrom(destType) &&
-                    gameObject.TryGetComponent(destType, out var result))
-                    return result;
-            } else if (src is Component component) {
-                if (destType == typeof(GameObject))
-                    return component.gameObject;
-                if (typeof(Component).IsAssignableFrom(destType) &&
-                    component.TryGetComponent(destType, out var result))
-                    return result;
+        static Resolver ResolveField(FieldInfo field) {
+            if (!resolveFields.TryGetValue(field, out var resolver)) {
+                resolver = Resolver.Create();
+                bool hasAttribute = false;
+                foreach (var attribute in field.GetCustomAttributes<ResolveAttribute>(true)) {
+                    var srcType = attribute.SourceType;
+                    if (srcType != null) {
+                        var srcPath = attribute.Source;
+                        int hashIndex = srcPath.LastIndexOf("#");
+                        if (hashIndex < 0) {
+                            resolver.WithType(srcType);
+                            resolver.WithPath(srcPath);
+                        } else {
+                            resolver.WithPath(srcPath.Substring(0, hashIndex));
+                            resolver.WithType(srcType);
+                            resolver.WithPath(srcPath.Substring(hashIndex + 1));
+                        }
+                    } else
+                        resolver.WithPath(attribute.Source);
+                    hasAttribute = true;
+                }
+                if (hasAttribute)
+                    resolver.WithType(field.FieldType);
+                else
+                    resolver = null;
+                resolveFields[field] = resolver;
             }
-            return null; // Unable to resolve.
-        }
-
-        static ResolveAttribute[] ResolveField(FieldInfo field) {
-            if (!resolveFields.TryGetValue(field, out var attributes)) {
-                attributes = field.GetCustomAttributes<ResolveAttribute>(true).ToArray();
-                if (attributes.Length == 0) attributes = null;
-                resolveFields[field] = attributes;
-            }
-            return attributes;
+            return resolver;
         }
 
         public override void OnPreprocess(Scene scene) {
@@ -94,21 +98,13 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 result = null;
                 return false;
             }
-            var attributes = ResolveField(field);
-            if (attributes != null) {
+            var resolver = ResolveField(field);
+            if (resolver != null) {
                 if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
                 resolvedObjects[(field, instance)] = null; // Circular reference protection.
-                result = instance;
-                bool hasResolved = false;
-                for (int i = 0; i < attributes.Length; i++) {
-                    if (!result.IsValid()) break;
-                    var srcPath = attributes[i].Source;
-                    var srcType = attributes[i].SourceType ?? result.GetType();
-                    if (new Resolver(srcPath, srcType).TryResolve(result, out result))
-                        hasResolved = true;
-                }
-                if (hasResolved) {
-                    resolvedObjects[(field, instance)] = result = ResolveToType(result, field.FieldType);
+                resolver.WithType(field.FieldType);
+                if (resolver.TryResolve(instance, out result)) {
+                    resolvedObjects[(field, instance)] = result;
                     return true;
                 }
             }

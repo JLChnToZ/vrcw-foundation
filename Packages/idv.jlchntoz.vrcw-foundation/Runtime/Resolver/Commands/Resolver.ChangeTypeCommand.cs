@@ -1,12 +1,36 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class ChangeTypeCommand : IResolverCommand {
+            const BindingFlags casterFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.InvokeMethod;
+            static readonly Dictionary<(Type, Type), MethodInfo> castMethods = new Dictionary<(Type, Type), MethodInfo>();
             static readonly List<Component> tempComponents = new List<Component>();
             public readonly Type type;
+
+            static MethodInfo FindCastMethod(Type fromType, Type toType) {
+                if (fromType == toType || toType.IsAssignableFrom(fromType) || fromType.IsAssignableFrom(toType)) return null;
+                return FindCastMethod(fromType, toType, fromType) ?? FindCastMethod(fromType, toType, toType);
+            }
+
+            static MethodInfo FindCastMethod(Type fromType, Type toType, Type findType) {
+                var methods = findType.GetMethods(casterFlags);
+                foreach (var method in methods)
+                    switch (method.Name) {
+                        case "op_Implicit":
+                        case "op_Explicit":
+                            var parameters = method.GetParameters();
+                            if (parameters.Length == 1 &&
+                                parameters[0].ParameterType == fromType &&
+                                method.ReturnType == toType)
+                                return method;
+                            break;
+                    }
+                return null;
+            }
 
             public ChangeTypeCommand(Type type = null) {
                 this.type = type;
@@ -19,8 +43,11 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                     s.queue.Clear();
                     s.queue.Enqueue(from); // Dummy
                     if (from == null) return;
-                    if (type == null || type.IsInstanceOfType(from))
+                    bool selfYielded = false;
+                    if (type == null || type.IsInstanceOfType(from)) {
+                        selfYielded = true;
                         s.queue.Enqueue(from);
+                    }
                     if (from is Component component) {
                         if (!component) return;
                         if (type == typeof(GameObject)) {
@@ -42,6 +69,13 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                                 s.queue.Enqueue(other);
                             return;
                         }
+                    }
+                    if (!selfYielded) {
+                        var fromType = from.GetType();
+                        if (!castMethods.TryGetValue((fromType, type), out var castMethod))
+                            castMethods[(fromType, type)] = castMethod = FindCastMethod(fromType, type);
+                        if (castMethod != null)
+                            s.queue.Enqueue(castMethod.Invoke(null, new object[] { from }));
                     }
                 }
             }

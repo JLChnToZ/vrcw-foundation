@@ -5,27 +5,11 @@ using System.Text;
 
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     /// <summary>
-    /// A generic resolver to resolve object from a given path.
+    /// A generic resolver that supports both property and hierarchy resolution.
     /// </summary>
-    /// <remarks>
-    /// This resolver supports both property and hierarchy resolution.
-    /// You may use glob-like pattern
-    /// (<c>/</c> for path entry separation,
-    /// <c>..</c> for parent,
-    /// <c>..*</c> for any parent,
-    /// <c>*</c> for wildcard,
-    /// <c>**</c> for any children)
-    /// to resolve in hierarchy,
-    /// and use dot (<c>.</c>) to resolve properties.
-    /// To combine-resolve through properties and hierarchy, you may use <c>#</c> to separate them.
-    /// By default it will treat the pattern is property goes first if no path separator is found.
-    /// </remarks>
-    public partial class Resolver : IEquatable<Resolver> {
-        static readonly Dictionary<(string, Type), IResolverCommand[]> cache = new Dictionary<(string, Type), IResolverCommand[]>();
-        static readonly HashSet<IResolverCommand[]> iteratingCommands = new HashSet<IResolverCommand[]>();
+    public partial class Resolver {
         static readonly List<TryResolveMemberDelegate> customResolvers = new List<TryResolveMemberDelegate>();
-        readonly string path;
-        readonly Type destinationType;
+        readonly List<IResolverCommand> commandList = new List<IResolverCommand>();
         IResolverCommand[] commands;
 
         /// <summary>
@@ -37,24 +21,35 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
         }
 
         /// <summary>
-        /// Create a resolver with the given path and destination type.
+        /// Create a new resolver.
+        /// </summary>
+        /// <returns>A new resolver.</returns>
+        public static Resolver Create() => new Resolver();
+
+        Resolver() { }
+
+        /// <summary>
+        /// Configurate this resolver to resolve the path from the current object.
         /// </summary>
         /// <param name="path">The path to resolve.</param>
-        /// <param name="destinationType">The destination type (the final type to search through hierarchy) to resolve.</param>
-        public Resolver(string path, Type destinationType = null) {
-            this.path = path;
-            this.destinationType = destinationType;
-        }
-
-        void ParsePath() {
-            if (string.IsNullOrWhiteSpace(path)) {
-                commands = Array.Empty<IResolverCommand>();
-                return;
-            }
-            if (cache.TryGetValue((path, destinationType), out commands)) return;
+        /// <param name="mode">The mode to parse the path. Default is <see cref="ParsePathMode.AutoDetect"/>.</param>
+        /// <returns>Current resolver for chaining.</returns>
+        /// <remarks>
+        /// You may use glob-like pattern
+        /// (<c>/</c> for path entry separation,
+        /// <c>..</c> for parent,
+        /// <c>..*</c> for any parent,
+        /// <c>*</c> for wildcard,
+        /// <c>**</c> for any children)
+        /// to resolve in hierarchy,
+        /// and use dot (<c>.</c>) to resolve properties.
+        /// To combine-resolve through properties and hierarchy, you may use <c>#</c> to separate them.
+        /// By default it will treat the pattern is property goes first if no path separator is found.
+        /// </remarks>
+        public Resolver WithPath(string path, ParsePathMode mode = ParsePathMode.AutoDetect) {
+            commands = null;
+            if (string.IsNullOrWhiteSpace(path)) return this;
             var sb = new StringBuilder(path.Length);
-            var commandList = new List<IResolverCommand>();
-            var mode = ParsePathMode.Undertermined;
             bool escaped = false;
             for (int i = 0, count = path.Length; i < count; i++) {
                 if (escaped) {
@@ -67,7 +62,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         escaped = true;
                         break;
                     case '#':
-                        if (sb.Length > 0) mode = ParseSegment(mode, sb, commandList, destinationType);
+                        if (sb.Length > 0) mode = ParseSegment(mode, sb);
                         if (mode == ParsePathMode.Hierarchy) {
                             commandList.Add(new ChangeTypeCommand());
                             mode = ParsePathMode.Property;
@@ -76,7 +71,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         break;
                     case '/':
                         switch (mode) {
-                            case ParsePathMode.Undertermined:
+                            case ParsePathMode.AutoDetect:
                                 if (sb.Length == 0) {
                                     commandList.Add(HierarchyRootCommand.instance);
                                     mode = ParsePathMode.Hierarchy;
@@ -84,40 +79,23 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                                 }
                                 goto case ParsePathMode.Hierarchy;
                             case ParsePathMode.Hierarchy:
-                                mode = ParseSegment(mode, sb, commandList);
+                                mode = ParseSegment(mode, sb);
                                 break;
                         }
                         break;
                     case '*':
-                        if (mode == ParsePathMode.Undertermined) mode = ParsePathMode.Hierarchy;
+                        if (mode == ParsePathMode.AutoDetect) mode = ParsePathMode.Hierarchy;
                         goto default;
                     default:
                         sb.Append(path[i]);
                         break;
                 }
             }
-            if (sb.Length > 0) {
-                if (mode == ParsePathMode.Undertermined) {
-                    if (commandList.Count == 0)
-                        commandList.Add(new ChangeTypeCommand(destinationType));
-                    mode = ParsePathMode.Property;
-                }
-                ParseSegment(mode, sb, commandList);
-            }
-            if (mode == ParsePathMode.Hierarchy)
-                commandList.Add(new ChangeTypeCommand(destinationType));
-            else
-                for (int i = commandList.Count - 1; i > 0; i--)
-                    if (commandList[i] is ChangeTypeCommand cType) {
-                        if (cType.type != destinationType)
-                            commandList[i] = new ChangeTypeCommand(destinationType);
-                        break;
-                    }
-            commands = commandList.ToArray();
-            cache[(path, destinationType)] = commands;
+            if (sb.Length > 0) ParseSegment(mode, sb);
+            return this;
         }
 
-        static ParsePathMode ParseSegment(ParsePathMode currentMode, StringBuilder sb, IList<IResolverCommand> commandList, Type defaultType = null) {
+        ParsePathMode ParseSegment(ParsePathMode currentMode, StringBuilder sb) {
             if (sb.Length == 0) {
                 commandList.Add(SelfCommand.instance);
                 return currentMode;
@@ -128,10 +106,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 case ".":
                 case "this":
                     if (currentMode != ParsePathMode.Hierarchy) {
-                        if (commandList.Count == 0)
-                            commandList.Add(new ChangeTypeCommand(defaultType));
-                        else
-                            commandList.Add(SelfCommand.instance);
+                        commandList.Add(SelfCommand.instance);
                         return ParsePathMode.Property;
                     }
                     goto default;
@@ -165,8 +140,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                             commandList.Add(new HierarchyChildCommand(pathSeg));
                             return ParsePathMode.Hierarchy;
                         case ParsePathMode.Property:
-                        case ParsePathMode.Undertermined:
-                            if (commandList.Count == 0) commandList.Add(new ChangeTypeCommand(defaultType));
+                        case ParsePathMode.AutoDetect:
                             if (pathSeg.Contains("."))
                                 foreach (var part in pathSeg.Split('.'))
                                     commandList.Add(new PropertyCommand(part));
@@ -178,18 +152,69 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             }
         }
 
-        public override string ToString() =>
-            destinationType == null ? path : $"{path} <{destinationType.Name}>";
-
-        public bool Equals(Resolver other) {
-            if (null == other) return false;
-            if (ReferenceEquals(this, other)) return true;
-            return path == other.path && destinationType == other.destinationType;
+        /// <summary>
+        /// Configurate this resolver to resolve the parent of the current object.
+        /// </summary>
+        /// <param name="grandParent">Whether to resolve the grand parent.</param>
+        /// <returns>Current resolver for chaining.</returns>
+        public Resolver WithParent(bool grandParent = false) {
+            commands = null;
+            commandList.Add(grandParent ? HierarchyParentCommand.chainedInstance : HierarchyParentCommand.nonChainedInstance);
+            return this;
         }
 
-        public override bool Equals(object obj) => obj is Resolver other && Equals(other);
+        /// <summary>
+        /// Configurate this resolver to resolve the child of the current object.
+        /// </summary>
+        /// <param name="name">The name of the child to resolve.</param>
+        /// <returns>Current resolver for chaining.</returns>
+        public Resolver WithChild(string name) {
+            commands = null;
+            commandList.Add(string.IsNullOrEmpty(name) ? HierarchyAnyChildCommand.nonChainedInstance as IResolverCommand : new HierarchyChildCommand(name));
+            return this;
+        }
 
-        public override int GetHashCode() => HashCode.Combine(path, destinationType);
+        /// <summary>
+        /// Configurate this resolver to resolve any child of the current object.
+        /// </summary>
+        /// <param name="grandChild">Whether to resolve the grand child.</param>
+        /// <returns>Current resolver for chaining.</returns>
+        public Resolver WithChild(bool grandChild = false) {
+            commands = null;
+            commandList.Add(grandChild ? HierarchyAnyChildCommand.chainedInstance : HierarchyAnyChildCommand.nonChainedInstance);
+            return this;
+        }
+
+        /// <summary>
+        /// Configurate this resolver to resolve the property of the current object.
+        /// </summary>
+        /// <param name="name">The name of the property to resolve.</param>
+        /// <returns>Current resolver for chaining.</returns>
+        public Resolver WithProperty(string name) {
+            commands = null;
+            commandList.Add(new PropertyCommand(name));
+            return this;
+        }
+
+        /// <summary>
+        /// Configurate this resolver to resolve the type of the current object.
+        /// </summary>
+        /// <param name="type">The type to resolve.</param>
+        /// <returns>Current resolver for chaining.</returns>
+        /// <remarks>
+        /// If current object is a <see cref="UnityEngine.Component"/> or <see cref="UnityEngine.GameObject"/>,
+        /// this will try to get the attached object with matching type, or all attached objects if no type specified;
+        /// otherwise, it will try to cast the object to the specified type.
+        /// </remarks>
+        public Resolver WithType(Type type = null) {
+            commands = null;
+            commandList.Add(new ChangeTypeCommand(type));
+            return this;
+        }
+
+        /// <inheritdoc cref="WithType(Type)"/>
+        /// <typeparam name="T">The type to resolve.</typeparam>
+        public Resolver WithType<T>() => WithType(typeof(T));
 
         /// <summary>
         /// Custom resolve delegate.
@@ -204,9 +229,23 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
         /// </remarks>
         public delegate bool TryResolveMemberDelegate(object from, string memberName, MemberInfo member, out object result);
 
-        enum ParsePathMode : byte {
-            Undertermined,
+        /// <summary>
+        /// The mode of the path parsing.
+        /// </summary>
+        public enum ParsePathMode : byte {
+            /// <summary>
+            /// Automatically detect the mode.
+            /// If the path contains path-like separator at the first segment, it will treat as hierarchy;
+            /// otherwise, it will treat as property.
+            /// </summary>
+            AutoDetect,
+            /// <summary>
+            /// Resolve as hierarchy.
+            /// </summary>
             Hierarchy,
+            /// <summary>
+            /// Resolve as property.
+            /// </summary>
             Property,
         }
     }

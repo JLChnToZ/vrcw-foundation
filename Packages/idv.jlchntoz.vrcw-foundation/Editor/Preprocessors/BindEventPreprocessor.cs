@@ -20,6 +20,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class BindEventPreprocessor : UdonSharpPreProcessor {
         static readonly Regex regexCompositeFormat = new Regex(@"\{(\d+)[,:]?[^\}]*\}", RegexOptions.Compiled);
         static readonly Dictionary<string, string> typeNameMapping = new Dictionary<string, string>();
+        static readonly Dictionary<BindEventAttribute, Resolver> resolverCache = new Dictionary<BindEventAttribute, Resolver>();
         static bool hasTypeNameMappingInit;
 
         protected override void ProcessEntry(Type type, UdonSharpBehaviour usharp, UdonBehaviour udon) {
@@ -54,9 +55,22 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         static void BindSingleEvent(UnityObject targetObj, Type srcType, BindEventAttribute attribute, UnityAction<string> call, int index) {
-            var srcPath = attribute.Source;
-            foreach (var otherObj in new Resolver(srcPath, srcType).Resolve(targetObj))
-            if (otherObj is UnityEventBase callback) {
+            if (!resolverCache.TryGetValue(attribute, out var resolver)) {
+                var srcPath = attribute.Source;
+                int hashIndex = srcPath.LastIndexOf("#");
+                resolver = Resolver.Create();
+                if (hashIndex < 0) {
+                    resolver.WithType(srcType);
+                    resolver.WithPath(srcPath);
+                } else {
+                    resolver.WithPath(srcPath.Substring(0, hashIndex));
+                    resolver.WithType(srcType);
+                    resolver.WithPath(srcPath.Substring(hashIndex + 1));
+                }
+                resolver.WithType<UnityEventBase>();
+                resolverCache[attribute] = resolver;
+            }
+            if (resolver.TryResolve(targetObj, out var otherObj) && otherObj is UnityEventBase callback) {
                 var targetEventName = string.Format(attribute.Destination, index, targetObj.name);
                 if (!hasTypeNameMappingInit) {
                     foreach (var def in UdonEditorManager.Instance.GetNodeDefinitions()) {
@@ -68,7 +82,6 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 if (typeNameMapping.TryGetValue(targetEventName, out var mappedEventName))
                     targetEventName = mappedEventName;
                 UnityEventTools.AddStringPersistentListener(callback, call, targetEventName);
-                break;
             }
         }
 
