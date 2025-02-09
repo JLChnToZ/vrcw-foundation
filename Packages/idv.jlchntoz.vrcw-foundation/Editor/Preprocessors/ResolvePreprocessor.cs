@@ -102,7 +102,6 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (resolver != null) {
                 if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
                 resolvedObjects[(field, instance)] = null; // Circular reference protection.
-                resolver.WithType(field.FieldType);
                 if (resolver.TryResolve(instance, out result)) {
                     resolvedObjects[(field, instance)] = result;
                     return true;
