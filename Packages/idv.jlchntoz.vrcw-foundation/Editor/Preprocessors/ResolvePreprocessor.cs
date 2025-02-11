@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -8,8 +7,8 @@ using UnityEditor;
 using VRC.Udon;
 using UdonSharp;
 using UdonSharpEditor;
-using UnityObject = UnityEngine.Object;
 using JLChnToZ.VRC.Foundation.Resolvers;
+using UnityObject = UnityEngine.Object;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class ResolvePreprocessor : UdonSharpPreProcessor {
