@@ -26,7 +26,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         readonly Dictionary<string, bool> trustedDomains = new Dictionary<string, bool>();
         readonly Dictionary<string, string> messageCache = new Dictionary<string, string>();
         readonly HashSet<string> supportedProtocols;
-        List<string> trustedUrls;
+        IList<string> trustedUrls;
 
         static TrustedUrlUtils() {
             var stringComparer = StringComparer.OrdinalIgnoreCase;
@@ -102,7 +102,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 }
             }
             if (vrcsdkConfig.HasKey("urlList")) {
-                var trustedUrls = vrcsdkConfig.GetList("urlList");
+                var trustedUrls = ToList(vrcsdkConfig.GetList("urlList"));
                 instances[TrustedUrlTypes.UnityVideo].trustedUrls = trustedUrls;
                 instances[TrustedUrlTypes.AVProDesktop].trustedUrls = trustedUrls;
                 instances[TrustedUrlTypes.AVProAndroid].trustedUrls = trustedUrls;
@@ -110,16 +110,31 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 EditorPrefs.SetString("VRCSDK_videoHostUrlList", string.Join("\n", trustedUrls));
             }
             if (vrcsdkConfig.HasKey("imageHostUrlList")) {
-                var trustedUrls = vrcsdkConfig.GetList("imageHostUrlList");
+                var trustedUrls = ToList(vrcsdkConfig.GetList("imageHostUrlList"));
                 instances[TrustedUrlTypes.ImageUrl].trustedUrls = trustedUrls;
                 EditorPrefs.SetString("VRCSDK_imageHostUrlList", string.Join("\n", trustedUrls));
             }
             if (vrcsdkConfig.HasKey("stringHostUrlList")) {
-                var trustedUrls = vrcsdkConfig.GetList("stringHostUrlList");
+                var trustedUrls = ToList(vrcsdkConfig.GetList("stringHostUrlList"));
                 instances[TrustedUrlTypes.StringUrl].trustedUrls = trustedUrls;
                 EditorPrefs.SetString("VRCSDK_stringHostUrlList", string.Join("\n", trustedUrls));
             }
             OnTrustedUrlsReady?.Invoke();
+        }
+
+        static IList<string> ToList(object list) {
+            if (list is IList<string> s) return s;
+            if (list is IReadOnlyList<object> objects) {
+                var container = new List<string>(objects.Count);
+                foreach (var obj in objects) {
+                    if (obj is string str) container.Add(str);
+                    else if (obj != null) container.Add(obj.ToString());
+                }
+                return container;
+            }
+            if (list != null)
+                Debug.LogWarning($"Failed to convert {list.GetType()}, probably API has been changed.");
+            return Array.Empty<string>();
         }
 
         /// <summary>
@@ -132,7 +147,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (urlList == null) return;
             if (trustedUrls == null || trustedUrls.Length != urlList.Count)
                 trustedUrls = new string[urlList.Count];
-            urlList.CopyTo(trustedUrls);
+            urlList.CopyTo(trustedUrls, 0);
         }
 
         /// <summary>
