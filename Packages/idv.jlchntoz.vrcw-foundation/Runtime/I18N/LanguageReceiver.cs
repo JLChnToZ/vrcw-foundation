@@ -17,8 +17,8 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         [SerializeField, HideInInspector, BindUdonSharpEvent] LanguageManager manager;
         [SerializeField, LocalizedLabel] string key;
         object[] args;
-        Text text;
-        TMP_Text textMeshPro;
+        [SerializeField, HideInInspector, Resolve(".", NullOnly = false)] Text text;
+        [SerializeField, HideInInspector, Resolve(".", NullOnly = false)] TMP_Text textMeshPro;
         bool afterFirstRun;
 
         /// <summary>
@@ -36,9 +36,6 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             if (afterFirstRun) return;
             afterFirstRun = true;
             if (!Utilities.IsValid(manager)) return;
-            text = GetComponent<Text>();
-            textMeshPro = GetComponent<TextMeshProUGUI>();
-            if (!Utilities.IsValid(textMeshPro)) textMeshPro = GetComponent<TextMeshPro>();
             if (string.IsNullOrEmpty(key)) {
                 if (Utilities.IsValid(text)) key = text.text;
                 else if (Utilities.IsValid(textMeshPro)) key = textMeshPro.text;
