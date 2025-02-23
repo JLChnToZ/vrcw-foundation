@@ -1,6 +1,6 @@
 {
     "name": "JLChnToZ.VRC.Foundation.Editor",
-    "rootNamespace": "JLChnToZ.VRC.Foundation.Editor",
+    "rootNamespace": "JLChnToZ.VRC.Foundation.Editors",
     "references": [
         "VRC.SDK3",
         "VRC.SDK3.Editor",
