@@ -62,6 +62,8 @@ Shader "UI/Modified" {
             #pragma geometry geom
             #pragma fragment frag
             #pragma target 4.0
+            // Exclude renderers incompatible with the geometry stage when writing to screen
+            #pragma exclude_renderers gles gles3 glcore
             #define GEOM_SUPPORT
             #include "./UI-Modified.cginc"
             ENDCG
