@@ -48,6 +48,10 @@ float _PixelRange;
     int _VRChatMirrorMode; // 0 = Normal, 1 = VR Mirror, 2 = Desktop Mirror
 #endif
 
+#ifndef GEOM_SUPPORT
+    int _Cull;
+#endif
+
 float median(float3 col) {
     return max(min(col.r, col.g), min(max(col.r, col.g), col.b));
 }
@@ -111,7 +115,18 @@ void geom(triangle v2f input[3], inout TriangleStream<v2f> triStream) {
 }
 #endif
 
-fixed4 frag(v2f IN) : SV_Target {
+fixed4 frag(
+    v2f IN
+#ifndef GEOM_SUPPORT
+    , fixed facing : VFACE
+#endif
+) : SV_Target {
+    #ifndef GEOM_SUPPORT
+        switch (_Cull) {
+            case 1: if (facing < 0) discard; break;
+            case 2: if (facing > 0) discard; break;
+        }
+    #endif
     float4 color = IN.color;
     float2 texcoord = IN.texcoord;
 
