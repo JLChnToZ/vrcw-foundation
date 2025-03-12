@@ -123,8 +123,8 @@ fixed4 frag(
 ) : SV_Target {
     #ifndef GEOM_SUPPORT
         switch (_Cull) {
-            case 1: if (facing < 0) discard; break;
-            case 2: if (facing > 0) discard; break;
+            case 1: if (facing > 0) discard; break;
+            case 2: if (facing < 0) discard; break;
         }
     #endif
     float4 color = IN.color;
