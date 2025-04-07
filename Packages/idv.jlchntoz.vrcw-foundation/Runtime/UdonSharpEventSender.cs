@@ -18,6 +18,10 @@ namespace JLChnToZ.VRC.Foundation {
         /// All callback listeners.
         /// </summary>
         [SerializeField] protected UdonSharpBehaviour[] targets;
+        /// <summary>
+        /// Whether to log the events sent.
+        /// </summary>
+        [SerializeField] protected bool logEvents = false;
 
         /// <summary>
         /// Add a listener to the event.
@@ -42,7 +46,7 @@ namespace JLChnToZ.VRC.Foundation {
         /// <param name="name">The event name.</param>
         protected void SendEvent(string name) {
             if (!Utilities.IsValid(targets)) return;
-            Debug.Log($"[{GetUdonTypeName()}] Send Event {name}");
+            if (logEvents) Debug.Log($"[{GetUdonTypeName()}] Send Event {name}");
             foreach (var ub in targets) if (Utilities.IsValid(ub)) ub.SendCustomEvent(name);
         }
 
