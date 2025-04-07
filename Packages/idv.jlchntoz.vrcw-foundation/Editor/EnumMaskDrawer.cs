@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using System.Reflection;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     /// <summary>
@@ -11,6 +12,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
     /// This adds support for <c>[EnumMask]</c> attribute in Unity's shader properties.
     /// </remarks>
     public class EnumMaskDrawer : MaterialPropertyDrawer {
+        static readonly Dictionary<string, (string[] names, int[] values)> enumCache = new Dictionary<string, (string[], int[])>();
         const int MAX_SAFE_FLOAT = (1 << 23) - 1;
         readonly string[] enumNames;
         readonly int[] enumValues;
@@ -34,30 +36,116 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             filteredValues = Array.Empty<int>();
         }
 
+        static bool GetTypedNamesAndValues(string typeName, out string[] names, out int[] values) {
+            if (string.IsNullOrWhiteSpace(typeName)) {
+                names = null;
+                values = null;
+                return false;
+            }
+            if (enumCache.TryGetValue(typeName, out var cached)) {
+                names = cached.names;
+                values = cached.values;
+                return true;
+            }
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) 
+                if (GetTypedNamesAndValues(assembly.GetType(typeName, false), out names, out values)) {
+                    enumCache[typeName] = (names, values);
+                    return true;
+                }
+            names = null;
+            values = null;
+            return false;
+        }
+
+        static bool GetTypedNamesAndValues(Type type, out string[] names, out int[] values) {
+            if (type == null || !type.IsEnum) {
+                names = null;
+                values = null;
+                return false;
+            }
+            var rawValues = Enum.GetValues(type);
+            var typeCode = Type.GetTypeCode(type);
+            var nameList = new List<string>(rawValues.Length);
+            var valueList = new List<int>(rawValues.Length);
+            var set = new HashSet<int>(rawValues.Length);
+            for (int i = 0; i < rawValues.Length; i++) {
+                var enumValue = rawValues.GetValue(i);
+                int intValue;
+                switch (typeCode) {
+                    case TypeCode.Byte:
+                    case TypeCode.SByte:
+                    case TypeCode.Int16:
+                    case TypeCode.UInt16:
+                    case TypeCode.Int32: intValue = Convert.ToInt32(enumValue); break;
+                    case TypeCode.UInt32: intValue = unchecked((int)Convert.ToUInt32(enumValue)); break;
+                    case TypeCode.Int64: intValue = unchecked((int)Convert.ToInt64(enumValue)); break;
+                    case TypeCode.UInt64: intValue = unchecked((int)Convert.ToUInt64(enumValue)); break;
+                    default: continue;
+                }
+                // Ignore duplicate values or "None" value
+                if (intValue == 0 || !set.Add(intValue)) continue;
+                var name = Enum.GetName(type, enumValue);
+                var matchingMember = type.GetField(name);
+                if (matchingMember != null) {
+                    if (matchingMember.GetCustomAttribute<ObsoleteAttribute>() != null) continue;
+                    var displayName = matchingMember.GetCustomAttribute<InspectorNameAttribute>();
+                    if (displayName != null && !string.IsNullOrWhiteSpace(displayName.displayName))
+                        name = displayName.displayName;
+                }
+                nameList.Add(name);
+                valueList.Add(intValue);
+            }
+            // If flag count still more than 32, sacrifice some of them,
+            // starting from the ones with the most bits set,
+            // which likely to be shorthands of common combinations,
+            // including something like "All".
+            if (nameList.Count > 32) {
+                int count = nameList.Count;
+                var skip = new bool[count];
+                var bitCount = new int[count];
+                set.Clear();
+                // Calculate bit count for each value
+                for (int i = 0; i < count; i++) {
+                    int value = valueList[i];
+                    value = (value & 0x55555555) + ((value >> 1) & 0x55555555);
+                    value = (value & 0x33333333) + ((value >> 2) & 0x33333333);
+                    value = (value & 0x0f0f0f0f) + ((value >> 4) & 0x0f0f0f0f);
+                    value = (value & 0x00ff00ff) + ((value >> 8) & 0x00ff00ff);
+                    value = (value & 0x0000ffff) + ((value >> 16) & 0x0000ffff);
+                    bitCount[i] = value;
+                    set.Add(i);
+                }
+                var bc = new int[set.Count];
+                set.CopyTo(bc);
+                Array.Sort(bc);
+                for (int bci = bc.Length - 1, bcc = bitCount.Length; count > 32 && bci >= 0; ) {
+                    int i = Array.LastIndexOf(bitCount, bc[bci], bcc - 1);
+                    if (i < 0) {
+                        bci--;
+                        bcc = bitCount.Length;
+                    } else {
+                        skip[i] = true;
+                        count--;
+                        bcc = i;
+                    }
+                }
+                for (int i = skip.Length - 1; i >= 0; i--)
+                    if (skip[i]) {
+                        nameList.RemoveAt(i);
+                        valueList.RemoveAt(i);
+                    }
+            }
+            names = nameList.ToArray();
+            values = valueList.ToArray();
+            return true;
+        }
+
         public EnumMaskDrawer(string[] names) =>
             GetFilteredNamesAndValues(names, out enumNames, out enumValues);
 
         public EnumMaskDrawer(string typeOrName) {
-            if (!string.IsNullOrWhiteSpace(typeOrName))
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
-                    var type = assembly.GetType(typeOrName, false);
-                    if (type == null || !type.IsEnum) continue;
-                    var rawValues = Enum.GetValues(type);
-                    var nameList = new List<string>(rawValues.Length);
-                    var valueList = new List<int>(rawValues.Length);
-                    for (int i = 0; i < rawValues.Length; i++) {
-                        var enumValue = rawValues.GetValue(i);
-                        int intValue = Convert.ToInt32(enumValue);
-                        if (intValue == 0) continue;
-                        nameList.Add(Enum.GetName(type, enumValue));
-                        valueList.Add(intValue);
-                        if (nameList.Count >= 32) break;
-                    }
-                    enumNames = nameList.ToArray();
-                    enumValues = valueList.ToArray();
-                    return;
-                }
-            GetFilteredNamesAndValues(new[] { typeOrName }, out enumNames, out enumValues);
+            if (!GetTypedNamesAndValues(typeOrName, out enumNames, out enumValues))
+                GetFilteredNamesAndValues(new[] { typeOrName }, out enumNames, out enumValues);
         }
 
         #region Constructor Fixed Argument Count Overloads
@@ -245,10 +333,12 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             for (int i = 0; i < enumValues.Length; i++)
                 if ((value & enumValues[i]) == enumValues[i])
                     mask |= 1 << i;
+            MaterialEditor.BeginProperty(position, prop);
             using (var changeCheck = new EditorGUI.ChangeCheckScope()) {
                 newMask = EditorGUI.MaskField(position, label, mask, enumNames);
                 if (!changeCheck.changed) return;
             }
+            MaterialEditor.EndProperty();
             if (newMask == 0) value = 0;
             else {
                 mask ^= newMask;
