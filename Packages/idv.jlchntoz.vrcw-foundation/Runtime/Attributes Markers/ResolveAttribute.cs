@@ -8,6 +8,8 @@ namespace JLChnToZ.VRC.Foundation {
     /// <remarks>
     /// When multiple <see cref="ResolveAttribute"/> are used on the same field,
     /// it will recursively resolve the field from the path until it reaches the last one.
+    /// If this attribute applied to properties in class with <see cref="IUdonAdaptor"/> interface,
+    /// it will also set the resolved result to the variable on the target udon behaviour.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
     public class ResolveAttribute : PropertyAttribute {

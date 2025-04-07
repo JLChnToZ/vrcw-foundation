@@ -17,18 +17,30 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         public virtual int Priority => 0;
 
         public virtual void OnPreprocess(Scene scene) {
-            foreach (var usharp in scene.IterateAllComponents<UdonSharpBehaviour>()) {
-                var type = usharp.GetType();
-                var udon = UdonSharpEditorUtility.GetBackingUdonBehaviour(usharp);
-                if (udon == null) {
-                    Debug.LogError($"[{GetType().Name}] `{usharp.name}` is not correctly configured.", usharp);
-                    continue;
+            foreach (var entry in scene.IterateAllComponents<MonoBehaviour>()) {
+                if (entry is IUdonAdaptor adaptor) {
+                    var udon = adaptor.TargetBehaviour;
+                    if (udon == null) {
+                        var us = adaptor.TargetUdonSharpBehaviour;
+                        if (us != null) udon = UdonSharpEditorUtility.GetBackingUdonBehaviour(us);
+                    }
+                    ProcessEntry(entry, udon);
                 }
-                ProcessEntry(type, usharp, udon);
+                if (entry is UdonSharpBehaviour usharp)
+                    ProcessEntry(entry, UdonSharpEditorUtility.GetBackingUdonBehaviour(usharp));
             }
         }
 
-        protected virtual void ProcessEntry(Type type, UdonSharpBehaviour proxy, UdonBehaviour udon) {}
+        void ProcessEntry(MonoBehaviour entry, UdonBehaviour udon) {
+            if (udon == null) {
+                Debug.LogError($"[{GetType().Name}] `{entry.name}` is not correctly configured.", entry);
+                return;
+            }
+            var type = entry.GetType();
+            ProcessEntry(type, entry, udon);
+        }
+
+        protected virtual void ProcessEntry(Type type, MonoBehaviour entry, UdonBehaviour udon) {}
 
         protected FieldInfo[] GetFields<T>(Type type) {
             if (!filteredFields.TryGetValue(type, out var fieldInfos)) {

@@ -23,12 +23,12 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         static readonly Dictionary<BindEventAttribute, Resolver> resolverCache = new Dictionary<BindEventAttribute, Resolver>();
         static bool hasTypeNameMappingInit;
 
-        protected override void ProcessEntry(Type type, UdonSharpBehaviour usharp, UdonBehaviour udon) {
+        protected override void ProcessEntry(Type type, MonoBehaviour entry, UdonBehaviour udon) {
             UnityAction<string> call = udon.SendCustomEvent;
             ProcessEntry(type, udon, call);
             var fieldInfos = GetFields<BindEventAttribute>(type);
             foreach (var field in fieldInfos) {
-                var targetObj = field.GetValue(usharp);
+                var targetObj = field.GetValue(entry);
                 if (targetObj is Array array)
                     for (int i = 0, length = array.GetLength(0); i < length; i++)
                         ProcessEntry(array.GetValue(i) as UnityObject, field, call, i);

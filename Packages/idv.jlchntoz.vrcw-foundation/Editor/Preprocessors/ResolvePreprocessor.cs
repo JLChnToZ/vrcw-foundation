@@ -57,23 +57,26 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             }
         }
 
-        protected override void ProcessEntry(Type type, UdonSharpBehaviour usharp, UdonBehaviour udon) {
+        protected override void ProcessEntry(Type type, MonoBehaviour entry, UdonBehaviour udon) {
             bool changed = false;
-            using (var so = new SerializedObject(usharp)) {
+            bool isAdaptor = entry is IUdonAdaptor;
+            using (var so = new SerializedObject(entry)) {
                 foreach (var field in GetFields<ResolveAttribute>(type)) {
                     try {
-                        if (TryResolveUnchecked(field, usharp, out var resolved) && !Equals(resolved, field.GetValue(usharp))) {
+                        if (TryResolveUnchecked(field, entry, out var resolved) && !Equals(resolved, field.GetValue(entry))) {
                             so.FindProperty(field.Name).SetBoxedValue(resolved);
+                            if (isAdaptor)
+                                udon.publicVariables.TrySetVariableValue(field.Name, resolved);
                             changed = true;
                         }
                     } catch (Exception ex) {
-                        Debug.LogError($"[ResolvePreprocessor] Unable to set `{field.Name}` in `{usharp.name}`: {ex.Message}", usharp);
+                        Debug.LogError($"[ResolvePreprocessor] Unable to set `{field.Name}` in `{entry.name}`: {ex.Message}", entry);
                     }
                 }
                 if (!changed) return;
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
-            UdonSharpEditorUtility.CopyProxyToUdon(usharp);
+            if (entry is UdonSharpBehaviour usharp) UdonSharpEditorUtility.CopyProxyToUdon(usharp);
         }
 
         public bool TryResolve(FieldInfo field, UnityObject instance, out object result) {
