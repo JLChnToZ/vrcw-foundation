@@ -15,6 +15,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
     [DefaultExecutionOrder(1)]
     public partial class LanguageReceiver : UdonSharpBehaviour {
         [SerializeField, HideInInspector, BindUdonSharpEvent] LanguageManager manager;
+        [SerializeField] bool dynamicBinding = false;
         [SerializeField, LocalizedLabel] string key;
         object[] args;
         [SerializeField, HideInInspector, Resolve(".", NullOnly = false)] Text text;
@@ -41,6 +42,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                 else if (Utilities.IsValid(textMeshPro)) key = textMeshPro.text;
             }
             _OnLanguageChanged();
+            if (dynamicBinding) manager._AddListener(this);
         }
 
 #if COMPILER_UDONSHARP
