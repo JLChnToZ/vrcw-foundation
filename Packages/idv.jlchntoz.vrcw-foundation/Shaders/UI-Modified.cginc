@@ -9,6 +9,7 @@
 #pragma multi_compile_local __ UNITY_UI_ALPHACLIP
 #pragma shader_feature_local __ _VRC_SUPPORT
 #pragma shader_feature_local __ _MIRROR_FLIP
+#pragma shader_feature_local __ _BILLBOARD
 
 struct appdata_t {
     float4 vertex : POSITION;
@@ -56,6 +57,26 @@ float median(float3 col) {
     return max(min(col.r, col.g), min(max(col.r, col.g), col.b));
 }
 
+bool normalizeCol(inout float3 col) {
+    float sqrLen = dot(col, col);
+    if (sqrLen < 0.0001f) return 0;
+    col *= rsqrt(sqrLen);
+    return 1;
+}
+
+float4 billboard(float4 v) {
+    float4x4 m = mul(unity_CameraToWorld, unity_WorldToObject);
+    m._m03_m13_m23_m33 = float4(0, 0, 0, 1);
+    float3 v0 = m._m00_m10_m20;
+    if (!normalizeCol(v0)) return mul(m, v);
+    float3 v1 = m._m01_m11_m21;
+    v1 -= dot(v1, v0) * v0;
+    if (!normalizeCol(v1)) return mul(m, v);
+    m._m00_m10_m20 = v0;
+    m._m01_m11_m21 = v1;
+    m._m02_m12_m22 = cross(v0, v1);
+    return mul(m, v);
+}
 
 v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     v2f OUT;
@@ -75,6 +96,10 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
         }
         if (_MirrorFlip != 0 && _VRChatMirrorMode > 0)
             v.vertex.x = -v.vertex.x;
+    #endif
+
+    #ifdef _BILLBOARD
+        v.vertex = billboard(v.vertex);
     #endif
 
     OUT.worldPosition = v.vertex;

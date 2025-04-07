@@ -10,6 +10,9 @@ Shader "UI/Modified" {
         [NoScaleOffset] _MSDFTex("Override Texture", 2D) = "black" {}
 		_PixelRange("MSDF Pixel Range", Float) = 4.0
 
+        [Header(Experimental Billboard Settings)]
+        [Toggle(_BILLBOARD)] _Billboard ("Billboard (Require Zero Rotation On Transform)", Float) = 0
+
         [Header(Conditional Appearance in VRChat Camera Mirror)]
         [Toggle(_VRC_SUPPORT)] _VRCSupport ("Enable", Int) = 0
         [EnumMask(Direct Look, VR Handheld Camera, Desktop Handheld Camera, Screenshot, VR Mirror, VR Handheld Camera in Mirror, _, VR Screenshot in Mirror, Desktop Mirror, _, Desktop Handheld Camera in Mirror, Desktop Screenshot in Mirror)]
