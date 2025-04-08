@@ -1,13 +1,15 @@
-﻿Shader "UI/Modified" {
+﻿Shader "TextMeshPro/Custom SDF" {
     Properties {
-        [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
-        _Color ("Color Tint", Color) = (1,1,1,1)
+        [HDR] [MainColor] _FaceColor ("Face Color", Color) = (1, 1, 1, 1)
 
-        [Header(MSDF Settings)]
-        [Toggle(MSDF)] _UseMSDF ("Input is MSDF", Float) = 0
-        [Toggle(MSDF_OVERRIDE)] _OverrideMSDF ("Use Override Texture", Float) = 0
-        [NoScaleOffset] _MSDFTex ("Override Texture", 2D) = "black" {}
-		_PixelRange ("MSDF Pixel Range", Float) = 4.0
+        [Header(Properties Controlled by TextMeshPro)]
+        [NoScaleOffset] _MainTex ("Font Atlas", 2D) = "black" {}
+        _TextureWidth ("Texture Width", Float) = 512
+        _TextureHeight ("Texture Height", Float) = 512
+        _GradientScale ("Gradient Scale", Float) = 5.0
+        _WeightNormal ("Weight Normal", Float) = 0
+        _WeightBold ("Weight Bold", Float) = 0.5
+        _ScaleRatioA ("Scale Ratio A", Float) = 1
 
         [Header(Experimental Billboard Settings)]
         [Toggle(_BILLBOARD)] _Billboard ("Billboard (Require Zero Rotation On Transform)", Float) = 0
@@ -28,7 +30,7 @@
         [IntRange] _StencilReadMask ("Read Mask", Range(0, 255)) = 255
         [Space]
         [Enum(UnityEngine.Rendering.CompareFunction)] unity_GUIZTestMode("Z Test Mode", Int) = 4
-        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Int) = 2
+        [Enum(UnityEngine.Rendering.CullMode)] _CullMode ("Cull Mode", Int) = 2
         [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
     }
 
@@ -38,7 +40,6 @@
             "IgnoreProjector" = "True"
             "RenderType" = "Transparent"
             "PreviewType" = "Plane"
-            "CanUseSpriteAtlas" = "True"
         }
 
         Stencil {
@@ -50,11 +51,12 @@
         }
 
         LOD 300
-        Cull [_Cull]
+        Cull [_CullMode]
         Lighting Off
         ZWrite Off
         ZTest [unity_GUIZTestMode]
-        Blend SrcAlpha OneMinusSrcAlpha
+        Fog { Mode Off }
+        Blend One OneMinusSrcAlpha
         ColorMask [_ColorMask]
 
         Pass {
@@ -66,8 +68,8 @@
             #pragma target 4.0
             // Exclude renderers incompatible with the geometry stage when writing to screen
             #pragma exclude_renderers gles gles3 glcore metal
-            #pragma shader_feature_local __ MSDF MSDF_OVERRIDE
             #define GEOM_SUPPORT
+            #define TMPRO_SDF 1
             #include "./UI-Modified.cginc"
             ENDCG
         }
@@ -95,6 +97,7 @@
         Lighting Off
         ZWrite Off
         ZTest [unity_GUIZTestMode]
+        Fog { Mode Off }
         Blend SrcAlpha OneMinusSrcAlpha
         ColorMask [_ColorMask]
 
@@ -104,7 +107,7 @@
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.5
-            #pragma shader_feature_local __ MSDF MSDF_OVERRIDE
+            #define TMPRO_SDF 1
             #include "./UI-Modified.cginc"
             ENDCG
         }

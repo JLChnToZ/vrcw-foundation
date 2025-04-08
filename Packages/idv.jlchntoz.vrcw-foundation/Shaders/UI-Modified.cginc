@@ -1,47 +1,71 @@
-// Based on Merlin's MUI and MSDF UI Shader
+// Partially based on MUI and MSDF UI Shader from Merlin, and TextMeshPro Mobile SDF Shader from Unity
 
 #include "UnityCG.cginc"
 #include "UnityUI.cginc"
 
-#pragma multi_compile_local __ MSDF
-#pragma multi_compile_local __ MSDF_OVERRIDE
 #pragma multi_compile_local __ UNITY_UI_CLIP_RECT
 #pragma multi_compile_local __ UNITY_UI_ALPHACLIP
 #pragma shader_feature_local __ _VRC_SUPPORT
 #pragma shader_feature_local __ _MIRROR_FLIP
 #pragma shader_feature_local __ _BILLBOARD
 
+#ifdef MSDF_OVERRIDE
+#define MSDF 2
+#endif
+
 struct appdata_t {
     float4 vertex : POSITION;
     float4 color : COLOR;
     float2 texcoord : TEXCOORD0;
+    #if TMPRO_SDF
+        float2 texcoord1 : TEXCOORD1;
+    #endif
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
 struct v2f {
     float4 vertex : SV_POSITION;
     fixed4 color : COLOR;
-    float2 texcoord : TEXCOORD0;
+    #if TMPRO_SDF
+        float4 texcoord : TEXCOORD0;
+    #else
+        float2 texcoord : TEXCOORD0;
+    #endif
     float2 generatedtexcoord : TEXCOORD1;
     centroid float2 centroidtexcoord : TEXCOORD2;
     #ifdef UNITY_UI_CLIP_RECT
         float4 localpos : TEXCOORD3;
     #endif
     UNITY_VERTEX_OUTPUT_STEREO
+    #if TMPRO_SDF
+        UNITY_VERTEX_INPUT_INSTANCE_ID
+    #endif
 };
 
 sampler2D _MainTex;
 float4 _MainTex_ST;
+#if TMPRO_SDF
+    uniform float4 _FaceColor;
+    uniform float _TextureWidth;
+    uniform float _GradientScale;
+    uniform float _ScaleRatioA;
+    uniform float _WeightNormal, _WeightBold;
+#else
 #if MSDF_OVERRIDE
     sampler2D _MSDFTex;
     float4 _MSDFTex_TexelSize;
 #else
     float4 _MainTex_TexelSize;
 #endif
-fixed4 _Color;
-fixed4 _TextureSampleAdd;
-float4 _ClipRect;
-float _PixelRange;
+    fixed4 _Color;
+    fixed4 _TextureSampleAdd;
+#endif
+#if UNITY_UI_CLIP_RECT
+    float4 _ClipRect;
+#endif
+#if MSDF
+    float _PixelRange;
+#endif
 
 #ifdef _VRC_SUPPORT
     int _RenderMode;
@@ -83,6 +107,9 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     v2f OUT;
     UNITY_INITIALIZE_OUTPUT(v2f, OUT);
     UNITY_SETUP_INSTANCE_ID(v);
+    #if TMPRO_SDF
+        UNITY_TRANSFER_INSTANCE_ID(v, OUT);
+    #endif
     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
 
     float4 localpos = v.vertex;
@@ -103,10 +130,20 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     #endif
     OUT.vertex = UnityObjectToClipPos(localpos);
 
-    OUT.texcoord = v.texcoord;
-    OUT.centroidtexcoord = v.texcoord;
+    #if TMPRO_SDF
+        OUT.texcoord = float4(
+            v.texcoord.xy,
+            0.5 - 0.125 * lerp(_WeightNormal, _WeightBold, step(v.texcoord1.y, 0)) * _ScaleRatioA,
+            1.3333333 * _GradientScale / _TextureWidth
+        );
+        OUT.color = v.color * _FaceColor;
+        OUT.color.rgb *= OUT.color.a;
+    #else
+        OUT.texcoord = v.texcoord;
+        OUT.color = v.color * _Color;
+    #endif
 
-    OUT.color = v.color * _Color;
+    OUT.centroidtexcoord = v.texcoord;
 
     const float2 generatedCoords[4] = {
         float2(0, 0),
@@ -144,6 +181,9 @@ half4 frag(
     , fixed facing : VFACE
 #endif
 ) : SV_Target {
+    #if TMPRO_SDF
+        UNITY_SETUP_INSTANCE_ID(IN);
+    #endif
     #ifndef GEOM_SUPPORT
         switch (_Cull) {
             case 1: if (facing > 0) discard; break;
@@ -158,7 +198,13 @@ half4 frag(
     if (any(IN.generatedtexcoord > 1) || any(IN.generatedtexcoord < 0))
         texcoord = IN.centroidtexcoord;
 
-    #ifdef MSDF
+    #if TMPRO_SDF
+        float d = tex2D(_MainTex, texcoord).a;
+        float2 ddxuv = ddx(texcoord);
+        float2 ddyuv = ddy(texcoord).yx;
+        ddyuv.x = -ddyuv.x;
+        color *= saturate((d - IN.texcoord.z) * rsqrt(abs(dot(ddxuv, ddyuv))) * IN.texcoord.w + 0.5);
+    #elif MSDF
     #ifdef MSDF_OVERRIDE
         float2 msdfUnit = _PixelRange / _MSDFTex_TexelSize.zw;
         float4 sampleCol = tex2D(_MSDFTex, texcoord);
