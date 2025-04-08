@@ -22,9 +22,11 @@ struct v2f {
     float4 vertex : SV_POSITION;
     fixed4 color : COLOR;
     float2 texcoord : TEXCOORD0;
-    float4 worldPosition : TEXCOORD1;
-    float2 generatedtexcoord : TEXCOORD2;
-    centroid float2 centroidtexcoord : TEXCOORD3;
+    float2 generatedtexcoord : TEXCOORD1;
+    centroid float2 centroidtexcoord : TEXCOORD2;
+    #ifdef UNITY_UI_CLIP_RECT
+        float4 localpos : TEXCOORD3;
+    #endif
     UNITY_VERTEX_OUTPUT_STEREO
 };
 
@@ -43,7 +45,6 @@ float _PixelRange;
 
 #ifdef _VRC_SUPPORT
     int _RenderMode;
-    int _MirrorFlip;
 
     int _VRChatCameraMode; // 0 = Normal, 1 = VR Handheld Camera, 2 = Desktop Handheld Camera, 3 = Screenshot
     int _VRChatMirrorMode; // 0 = Normal, 1 = VR Mirror, 2 = Desktop Mirror
@@ -57,53 +58,50 @@ float median(float3 col) {
     return max(min(col.r, col.g), min(max(col.r, col.g), col.b));
 }
 
-bool normalizeCol(inout float3 col) {
+bool tryNormalize(inout float3 col) {
     float sqrLen = dot(col, col);
     if (sqrLen < 0.0001f) return 0;
     col *= rsqrt(sqrLen);
     return 1;
 }
 
-float4 billboard(float4 v) {
+float4x4 billboard() {
     float4x4 m = mul(unity_CameraToWorld, unity_WorldToObject);
     m._m03_m13_m23_m33 = float4(0, 0, 0, 1);
     float3 v0 = m._m00_m10_m20;
-    if (!normalizeCol(v0)) return mul(m, v);
+    if (!tryNormalize(v0)) return m;
     float3 v1 = m._m01_m11_m21;
     v1 -= dot(v1, v0) * v0;
-    if (!normalizeCol(v1)) return mul(m, v);
+    if (!tryNormalize(v1)) return m;
     m._m00_m10_m20 = v0;
     m._m01_m11_m21 = v1;
     m._m02_m12_m22 = cross(v0, v1);
-    return mul(m, v);
+    return m;
 }
 
 v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     v2f OUT;
+    UNITY_INITIALIZE_OUTPUT(v2f, OUT);
     UNITY_SETUP_INSTANCE_ID(v);
     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
 
+    float4 localpos = v.vertex;
     #ifdef _VRC_SUPPORT
         uint currentRenderMode = pow(2, _VRChatCameraMode + _VRChatMirrorMode * 4);
-        if (_RenderMode / currentRenderMode % 2 == 0) {
-            OUT.worldPosition = 0;
-            OUT.vertex = 0;
-            OUT.color = 0;
-            OUT.texcoord = 0;
-            OUT.centroidtexcoord = 0;
-            OUT.generatedtexcoord = 0;
-            return OUT;
-        }
-        if (_MirrorFlip != 0 && _VRChatMirrorMode > 0)
-            v.vertex.x = -v.vertex.x;
+        if (_RenderMode / currentRenderMode % 2 == 0) return OUT;
+        #if (defined(_BILLBOARD) && !defined(_MIRROR_FLIP)) || (!defined(_BILLBOARD) && defined(_MIRROR_FLIP))
+            if (_VRChatMirrorMode > 0) localpos.x = -localpos.x;
+        #endif
     #endif
 
     #ifdef _BILLBOARD
-        v.vertex = billboard(v.vertex);
+        localpos = mul(billboard(), localpos);
     #endif
 
-    OUT.worldPosition = v.vertex;
-    OUT.vertex = UnityObjectToClipPos(OUT.worldPosition);
+    #ifdef UNITY_UI_CLIP_RECT
+        OUT.localpos = localpos;
+    #endif
+    OUT.vertex = UnityObjectToClipPos(localpos);
 
     OUT.texcoord = v.texcoord;
     OUT.centroidtexcoord = v.texcoord;
@@ -125,7 +123,7 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
 [maxvertexcount(3)]
 void geom(triangle v2f input[3], inout TriangleStream<v2f> triStream) {
     #if defined(_VRC_SUPPORT) && defined(_MIRROR_FLIP)
-    if (_MirrorFlip != 0 && _VRChatMirrorMode > 0) {
+    if (_VRChatMirrorMode > 0) {
         triStream.Append(input[0]);
         triStream.Append(input[2]);
         triStream.Append(input[1]);
@@ -140,7 +138,7 @@ void geom(triangle v2f input[3], inout TriangleStream<v2f> triStream) {
 }
 #endif
 
-fixed4 frag(
+half4 frag(
     v2f IN
 #ifndef GEOM_SUPPORT
     , fixed facing : VFACE
@@ -177,7 +175,7 @@ fixed4 frag(
     #endif
 
     #ifdef UNITY_UI_CLIP_RECT
-        color.a *= UnityGet2DClipping(IN.worldPosition.xy, _ClipRect);
+        color.a *= UnityGet2DClipping(IN.localpos.xy, _ClipRect);
     #endif
 
     #ifdef UNITY_UI_ALPHACLIP
