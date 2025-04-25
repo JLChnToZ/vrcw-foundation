@@ -28,7 +28,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 if (state is State s && s.current)
                     s.current = chained ? s.current.parent : null;
             }
-            
+
             sealed class State : ICommandState {
                 public Transform current;
                 public object Current => current;

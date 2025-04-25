@@ -26,7 +26,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         Init(queue, component.transform);
                 }
             }
-            
+
             void Init(Queue<object> queue, Transform transform) {
                 if (chained) queue.Enqueue(transform);
                 else EnqueueChildren(queue, transform);
