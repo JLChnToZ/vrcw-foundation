@@ -1,7 +1,7 @@
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class SelfCommand : IResolverCommand {
-            public static SelfCommand instance = new SelfCommand();
+            public static readonly SelfCommand instance = new SelfCommand();
 
             public ICommandState CreateState() => new SingleState();
 

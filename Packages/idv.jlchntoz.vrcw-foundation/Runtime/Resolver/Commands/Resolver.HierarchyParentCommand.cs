@@ -3,8 +3,8 @@ using UnityEngine;
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class HierarchyParentCommand : IResolverCommand {
-            public static HierarchyParentCommand nonChainedInstance = new HierarchyParentCommand(false);
-            public static HierarchyParentCommand chainedInstance = new HierarchyParentCommand(true);
+            public static readonly HierarchyParentCommand nonChainedInstance = new HierarchyParentCommand(false);
+            public static readonly HierarchyParentCommand chainedInstance = new HierarchyParentCommand(true);
             readonly bool chained;
 
             HierarchyParentCommand(bool c) => chained = c;

@@ -4,8 +4,8 @@ using UnityEngine;
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class HierarchyAnyChildCommand : IResolverCommand {
-            public static HierarchyAnyChildCommand nonChainedInstance = new HierarchyAnyChildCommand(false);
-            public static HierarchyAnyChildCommand chainedInstance = new HierarchyAnyChildCommand(true);
+            public static readonly HierarchyAnyChildCommand nonChainedInstance = new HierarchyAnyChildCommand(false);
+            public static readonly HierarchyAnyChildCommand chainedInstance = new HierarchyAnyChildCommand(true);
 
             readonly bool chained;
 
@@ -17,19 +17,19 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 if (state is QueueState s) {
                     var queue = s.queue;
                     queue.Clear();
-                    if (from is Transform transform){
-                        queue.Enqueue(transform);
-                        EnqueueChildren(queue, transform);
-                    } else if (from is GameObject gameObject) {
-                        transform = gameObject.transform;
-                        queue.Enqueue(transform);
-                        EnqueueChildren(queue, transform);
-                    } else if (from is Component component) {
-                        transform = component.transform;
-                        queue.Enqueue(transform);
-                        EnqueueChildren(queue, transform);
-                    }
+                    queue.Enqueue(from); // Dummy
+                    if (from is Transform transform)
+                        Init(queue, transform);
+                    else if (from is GameObject gameObject)
+                        Init(queue, gameObject.transform);
+                    else if (from is Component component)
+                        Init(queue, component.transform);
                 }
+            }
+            
+            void Init(Queue<object> queue, Transform transform) {
+                if (chained) queue.Enqueue(transform);
+                else EnqueueChildren(queue, transform);
             }
 
             public void Next(ICommandState state) {

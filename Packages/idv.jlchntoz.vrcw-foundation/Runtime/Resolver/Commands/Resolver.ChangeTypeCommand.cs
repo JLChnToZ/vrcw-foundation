@@ -10,8 +10,11 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             static readonly Dictionary<(Type, Type), MethodInfo> castMethods = new Dictionary<(Type, Type), MethodInfo>();
             static readonly List<Component> tempComponents = new List<Component>();
             public readonly Type type;
+            
+            public static readonly ChangeTypeCommand anyType = new ChangeTypeCommand();
 
-            static MethodInfo FindCastMethod(Type fromType, Type toType) {
+            static MethodInfo FindCastMethod(Type fromType, Type toType)
+            {
                 if (fromType == toType || toType.IsAssignableFrom(fromType) || fromType.IsAssignableFrom(toType)) return null;
                 return FindCastMethod(fromType, toType, fromType) ?? FindCastMethod(fromType, toType, toType);
             }

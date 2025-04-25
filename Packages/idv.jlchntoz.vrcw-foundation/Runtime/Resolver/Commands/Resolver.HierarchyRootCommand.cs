@@ -6,7 +6,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
         sealed class HierarchyRootCommand : IResolverCommand {
             readonly List<GameObject> roots = new List<GameObject>();
 
-            public static HierarchyRootCommand instance = new HierarchyRootCommand();
+            public static readonly HierarchyRootCommand instance = new HierarchyRootCommand();
 
             public ICommandState CreateState() => new QueueState();
 
