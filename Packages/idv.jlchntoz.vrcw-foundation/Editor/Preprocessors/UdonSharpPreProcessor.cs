@@ -44,13 +44,16 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         protected FieldInfo[] GetFields<T>(Type type) {
             if (!filteredFields.TryGetValue(type, out var fieldInfos)) {
-                fieldInfos = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy)
-                    .Where(
-                        typeof(Attribute).IsAssignableFrom(typeof(T)) ?
-                        IsAttributeDefined<T> :
-                        IsAssignable<T>
-                    ).ToArray();
-                filteredFields[type] = fieldInfos;
+                var fieldList = new List<FieldInfo>();
+                Func<FieldInfo, bool> filter = typeof(Attribute).IsAssignableFrom(typeof(T)) ? IsAttributeDefined<T> : IsAssignable<T>;
+                for (var t = type; t != null && t != typeof(object); t = t.BaseType) {
+                    if (filteredFields.TryGetValue(t, out fieldInfos)) {
+                        fieldList.AddRange(fieldInfos);
+                        break;
+                    }
+                    fieldList.AddRange(t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Where(filter));
+                }
+                filteredFields[type] = fieldInfos = fieldList.ToArray();
             }
             return fieldInfos;
         }
