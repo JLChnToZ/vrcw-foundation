@@ -192,11 +192,15 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 using (var file = File.OpenRead(vpmManifestPath))
                 using (var reader = new StreamReader(file))
                     vpmManifest = JsonMapper.ToObject(new JsonReader(reader));
-                if (!vpmManifest.IsObject || !vpmManifest.ContainsKey("dependencies")) return false;
-                var dependencies = vpmManifest["dependencies"];
-                if (dependencies.IsObject && dependencies.ContainsKey(packageName)) return true;
-                var lockedDependencies = vpmManifest["locked"];
-                if (lockedDependencies.IsObject && lockedDependencies.ContainsKey(packageName)) return true;
+                if (!vpmManifest.IsObject) return false;
+                if (vpmManifest.ContainsKey("dependencies")) {
+                    var dependencies = vpmManifest["dependencies"];
+                    if (dependencies.IsObject && dependencies.ContainsKey(packageName)) return true;
+                }
+                if (vpmManifest.ContainsKey("locked")) {
+                    var lockedDependencies = vpmManifest["locked"];
+                    if (lockedDependencies.IsObject && lockedDependencies.ContainsKey(packageName)) return true;
+                }
                 return false;
 #endif
             } catch {
