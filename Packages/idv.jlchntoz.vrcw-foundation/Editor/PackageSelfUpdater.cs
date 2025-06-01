@@ -12,10 +12,11 @@ using VRC.PackageManagement.Core;
 using VRC.PackageManagement.Core.Types;
 using VRC.PackageManagement.Core.Types.Packages;
 using VRC.PackageManagement.Resolver;
-
-using SemanticVersion = SemanticVersioning.Version;
 #else
 using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.Networking;
 using JLChnToZ.VRC.Foundation.ThirdParties.LitJson;
 #endif
 
@@ -26,12 +27,36 @@ namespace JLChnToZ.VRC.Foundation.Editors {
     /// Self updater for VPM based packages.
     /// </summary>
     public class PackageSelfUpdater {
+        static PackageSelfUpdater selfInstance;
         static GUIContent infoContent;
         static EditorI18N i18n;
+#if !VPM_RESOLVER_INCLUDED
+        static Dictionary<string, UniTask<Dictionary<string, (Semver release, Semver preRelease)>>> listingCache = new Dictionary<string, UniTask<Dictionary<string, (Semver, Semver)>>>();
+        static Dictionary<string, UniTask<(Semver release, Semver preRelease)>> versionCache = new Dictionary<string, UniTask<(Semver, Semver)>>();
+#endif
         readonly string listingsID, listingsURL;
         readonly string packageName, packageDisplayName, packageVersion;
         string availableVersion;
         bool isInstalledManually;
+        bool enableSelfCheck = true;
+
+        /// <summary>
+        /// The self instance of <see cref="PackageSelfUpdater"/>,
+        /// which handles the self-update of the package containing this class.
+        /// </summary>
+        public static PackageSelfUpdater SelfInstance {
+            get {
+                if (selfInstance == null) {
+                    selfInstance = new PackageSelfUpdater(
+                        typeof(PackageSelfUpdater).Assembly,
+                        "idv.jlchntoz.xtlcdn-listing",
+                        "https://xtlcdn.github.io/vpm/index.json"
+                    );
+                    selfInstance.CheckInstallationInBackground();
+                }
+                return selfInstance;
+            }
+        }
 
         /// <summary>
         /// The package name.
@@ -54,9 +79,64 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         public bool IsInstalledManually => isInstalledManually;
 
         /// <summary>
+        /// Whether to enable self-check for updates.
+        /// </summary>
+        public bool EnableSelfCheck {
+            get => enableSelfCheck;
+            set => enableSelfCheck = value;
+        }
+
+        /// <summary>
         /// Event triggered when the version is refreshed.
         /// </summary>
         public event Action OnVersionRefreshed;
+
+#if !VPM_RESOLVER_INCLUDED
+        static UniTask<(Semver release, Semver PreRelease)> GetVersions(string listingsURL, string packageName) {
+            if (!versionCache.TryGetValue(listingsURL, out var task))
+                versionCache[listingsURL] = task = GetVersionsCore(listingsURL, packageName).Preserve();
+            return task;
+        }
+
+        static async UniTask<(Semver release, Semver PreRelease)> GetVersionsCore(string listingsURL, string packageName) {
+            var listing = await GetListing(listingsURL);
+            if (!listing.TryGetValue(packageName, out var versions)) return default;
+            return versions;
+        }
+
+        static UniTask<Dictionary<string, (Semver release, Semver PreRelease)>> GetListing(string listingsURL) {
+            if (!listingCache.TryGetValue(listingsURL, out var task))
+                listingCache[listingsURL] = task = GetListingCore(listingsURL).Preserve();
+            return task;
+        }
+
+        static async UniTask<Dictionary<string, (Semver release, Semver PreRelease)>> GetListingCore(string listingsURL) {
+            await UniTask.SwitchToMainThread();
+            var req = UnityWebRequest.Get(listingsURL);
+            var results = new Dictionary<string, (Semver, Semver)>();
+            await req.SendWebRequest();
+            var result = JsonMapper.ToObject(req.downloadHandler.text);
+            if (!result.ContainsKey("packages")) throw new Exception("Invalid listings repository format.");
+            foreach (DictionaryEntry package in result["packages"] as IDictionary) {
+                var packageName = package.Key.ToString();
+                if (!(package.Value is JsonData value) ||
+                    !value.IsObject ||
+                    !value.ContainsKey("versions"))
+                    continue;
+                var versions = value["versions"];
+                Semver release = default, preRelease = default;
+                foreach (var version in versions.Keys)
+                    if (Semver.TryParse(version, out var semver)) {
+                        if (!semver.IsPrerelease && semver > release)
+                            release = semver;
+                        if (semver > preRelease)
+                            preRelease = semver;
+                    }
+                results[packageName] = (release, preRelease);
+            }
+            return results;
+        }
+#endif
 
         /// <summary>
         /// Create a new instance of <see cref="PackageSelfUpdater"/>.
@@ -95,19 +175,16 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         /// </summary>
         public void CheckInstallation() {
             isInstalledManually = !IsPackageInVPM();
-            CheckInstallationCallback().Forget();
+            QueryVersionAndCheck().Forget();
         }
 
         bool IsPackageInVPM() {
             try {
                 if (string.IsNullOrEmpty(packageName)) return false;
-                #if VPM_RESOLVER_INCLUDED
-                var allVersions = Resolver.GetAllVersionsOf(packageName);
-                if (allVersions.Count > 0 && new SemanticVersion(allVersions[0]) > new SemanticVersion(packageVersion))
-                    availableVersion = allVersions[0];
+#if VPM_RESOLVER_INCLUDED
                 var manifest = VPMProjectManifest.Load(Resolver.ProjectDir);
                 return manifest.locked.ContainsKey(packageName) || manifest.dependencies.ContainsKey(packageName);
-                #else
+#else
                 // VPM resolver unavailable, fallback to manual detection.
                 var vpmManifestPath = Path.GetFullPath("../Packages/vpm-manifest.json", Application.dataPath);
                 if (!File.Exists(vpmManifestPath)) return false;
@@ -117,14 +194,39 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     vpmManifest = JsonMapper.ToObject(new JsonReader(reader));
                 if (!vpmManifest.IsObject || !vpmManifest.ContainsKey("dependencies")) return false;
                 var dependencies = vpmManifest["dependencies"];
-                return dependencies.IsObject && dependencies.ContainsKey(packageName);
-                #endif
+                if (dependencies.IsObject && dependencies.ContainsKey(packageName)) return true;
+                var lockedDependencies = vpmManifest["locked"];
+                if (lockedDependencies.IsObject && lockedDependencies.ContainsKey(packageName)) return true;
+                return false;
+#endif
             } catch {
                 return false;
             }
         }
 
-        async UniTask CheckInstallationCallback() {
+        async UniTask QueryVersionAndCheck() {
+            try {
+                if (!isInstalledManually) {
+#if VPM_RESOLVER_INCLUDED
+                    Semver packageSemver = packageVersion, latestVersion = default;
+                    bool isPrerelease = packageSemver.IsPrerelease;
+                    foreach (var version in Resolver.GetAllVersionsOf(packageName))
+                        if (Semver.TryParse(version, out var semver) && semver > latestVersion && (isPrerelease || !semver.IsPrerelease))
+                            latestVersion = semver;
+                    if (latestVersion > packageSemver)
+                        availableVersion = latestVersion.ToString();
+#else
+                    var (latestRelease, lastestPreRelease) = await GetVersions(listingsURL, packageName);
+                    Semver currentVersion = packageVersion;
+                    if (currentVersion.IsPrerelease && lastestPreRelease > currentVersion)
+                        availableVersion = lastestPreRelease.ToString();
+                    else if (latestRelease > currentVersion)
+                        availableVersion = latestRelease.ToString();
+#endif
+                }
+            } catch (Exception e) {
+                Debug.LogError($"Failed to check for updates: {e.Message}");
+            }
             await UniTask.SwitchToMainThread();
             OnVersionRefreshed?.Invoke();
         }
@@ -136,10 +238,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         /// This method requires user interaction.
         /// </remarks>
         public void ResolveInstallation() {
-            #if VPM_RESOLVER_INCLUDED
+#if VPM_RESOLVER_INCLUDED
             if (!Repos.UserRepoExists(listingsID) && !Repos.AddRepo(new Uri(listingsURL)))
                 return;
-            #endif
+#endif
             ConfirmAndUpdate();
         }
 
@@ -150,7 +252,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         /// This method requires user interaction.
         /// </remarks>
         public void ConfirmAndUpdate() {
-            #if VPM_RESOLVER_INCLUDED
+#if VPM_RESOLVER_INCLUDED
             if (string.IsNullOrEmpty(packageName)) {
                 Debug.LogError("Unable to find package name.");
                 return;
@@ -171,14 +273,14 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 sb.AppendLine($"- {dependency}");
             if (i18n.DisplayLocalizedDialog2("PackageSelfUpdater.update_confirm", sb))
                 UpdateUnchecked(vrcPackage).Forget();
-            #else
+#else
             if (!isInstalledManually) return;
             switch (i18n.DisplayLocalizedDialog3("PackageSelfUpdater.update_message_no_vcc")) {
                 case 1: Application.OpenURL("https://vcc.docs.vrchat.com/"); break;
                 case 2: Application.OpenURL("https://vcc.docs.vrchat.com/vpm/migrating"); break;
             }
             Debug.LogError("Unable to update package. Please migrate your project to Creator Companion first.");
-            #endif
+#endif
         }
 
         /// <summary>
@@ -194,19 +296,24 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     if (GUILayout.Button(i18n.GetLocalizedContent("PackageSelfUpdater.update_message:confirm"), GUILayout.ExpandWidth(false)))
                         ResolveInstallation();
                 }
+                return;
             }
             if (!string.IsNullOrEmpty(availableVersion)) {
                 EditorGUILayout.Space();
                 using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox)) {
                     var infoContent = GetInfoContent("PackageSelfUpdater.update_available", availableVersion);
                     EditorGUILayout.LabelField(infoContent, EditorStyles.wordWrappedLabel);
+#if VPM_RESOLVER_INCLUDED
                     if (GUILayout.Button(i18n.GetLocalizedContent("PackageSelfUpdater.update_available:confirm"), GUILayout.ExpandWidth(false)))
                         ConfirmAndUpdate();
+#endif
                 }
+                return;
             }
+            if (enableSelfCheck && this != selfInstance) SelfInstance.DrawUpdateNotifier();
         }
 
-        #if VPM_RESOLVER_INCLUDED
+#if VPM_RESOLVER_INCLUDED
         async UniTask UpdateUnchecked(IVRCPackage package) {
             await UniTask.Delay(500);
             Resolver.ForceRefresh();
@@ -222,7 +329,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             }
             Resolver.ForceRefresh();
         }
-        #endif
+#endif
 
         static GUIContent GetInfoContent(string text, params object[] args) {
             if (infoContent == null) infoContent = EditorGUIUtility.IconContent("console.infoicon");
