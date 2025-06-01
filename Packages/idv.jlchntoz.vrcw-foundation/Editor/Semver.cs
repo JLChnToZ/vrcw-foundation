@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -100,7 +101,20 @@ namespace JLChnToZ.VRC.Foundation {
             if (comp != 0) return comp;
             comp = patch.CompareTo(other.patch);
             if (comp != 0) return comp;
-            return Identifier.Compare(prerelease, other.prerelease);
+            return CompareIdentifier(other.prerelease);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        int CompareIdentifier(Identifier[] otherPR) {
+            if (prerelease == otherPR) return 0;
+            if (prerelease == null || prerelease.Length == 0)
+                return otherPR == null || otherPR.Length == 0 ? 0 : -1;
+            if (otherPR == null || otherPR.Length == 0) return 1;
+            for (int i = 0, l = Math.Min(prerelease.Length, otherPR.Length); i < l; i++) {
+                int comparison = prerelease[i].CompareTo(otherPR[i]);
+                if (comparison != 0) return comparison;
+            }
+            return prerelease.Length.CompareTo(otherPR.Length);
         }
 
         /// <summary>
@@ -114,8 +128,21 @@ namespace JLChnToZ.VRC.Foundation {
             major == other.major &&
             minor == other.minor &&
             patch == other.patch &&
-            Identifier.Equals(prerelease, other.prerelease) &&
+            IsIdentifierEquals(other.prerelease) &&
             string.Equals(build, other.build, StringComparison.Ordinal);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        bool IsIdentifierEquals(Identifier[] otherPR) {
+            if (prerelease == otherPR)
+                return true;
+            if (prerelease == null || prerelease.Length == 0)
+                return otherPR == null || otherPR.Length == 0;
+            if (otherPR == null || otherPR.Length == 0 || prerelease.Length != otherPR.Length)
+                return false;
+            for (int i = 0; i < prerelease.Length; i++)
+                if (!prerelease[i].Equals(otherPR[i])) return false;
+            return true;
+        }
 
         public readonly override bool Equals(object obj) =>
             obj is Semver other && Equals(other);
@@ -151,16 +178,22 @@ namespace JLChnToZ.VRC.Foundation {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator ==(Semver left, Semver right) => left.Equals(right);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator !=(Semver left, Semver right) => !left.Equals(right);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator <(Semver left, Semver right) => left.CompareTo(right) < 0;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator >(Semver left, Semver right) => left.CompareTo(right) > 0;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator <=(Semver left, Semver right) => left.CompareTo(right) <= 0;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator >=(Semver left, Semver right) => left.CompareTo(right) >= 0;
 
         readonly struct Identifier : IEquatable<Identifier>, IComparable<Identifier> {
@@ -174,33 +207,6 @@ namespace JLChnToZ.VRC.Foundation {
                     numericValue++;
                 else
                     numericValue = 0;
-            }
-
-            public static int Compare(Identifier[] a, Identifier[] b) {
-                if (a == b)
-                    return 0;
-                if (a == null || a.Length == 0)
-                    return b == null || b.Length == 0 ? 0 : -1;
-                if (b == null || b.Length == 0)
-                    return 1;
-                int minLength = Math.Min(a.Length, b.Length);
-                for (int i = 0; i < minLength; i++) {
-                    int comparison = a[i].CompareTo(b[i]);
-                    if (comparison != 0) return comparison;
-                }
-                return a.Length.CompareTo(b.Length);
-            }
-
-            public static bool Equals(Identifier[] a, Identifier[] b) {
-                if (a == b)
-                    return true;
-                if (a == null || a.Length == 0)
-                    return b == null || b.Length == 0;
-                if (b == null || b.Length == 0 || a.Length != b.Length)
-                    return false;
-                for (int i = 0; i < a.Length; i++)
-                    if (!a[i].Equals(b[i])) return false;
-                return true;
             }
 
             public readonly int CompareTo(Identifier other) {
@@ -223,7 +229,7 @@ namespace JLChnToZ.VRC.Foundation {
                 return string.Equals(stringValue, other.stringValue, StringComparison.Ordinal);
             }
 
-            public override bool Equals(object obj) =>
+            public override readonly bool Equals(object obj) =>
                 obj is Identifier other && Equals(other);
 
             public override readonly int GetHashCode() => numericValue > 0 ?
