@@ -92,25 +92,25 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         public event Action OnVersionRefreshed;
 
 #if !VPM_RESOLVER_INCLUDED
-        static UniTask<(Semver release, Semver PreRelease)> GetVersions(string listingsURL, string packageName) {
+        static UniTask<(Semver release, Semver preRelease)> GetVersions(string listingsURL, string packageName) {
             if (!versionCache.TryGetValue(listingsURL, out var task))
                 versionCache[listingsURL] = task = GetVersionsCore(listingsURL, packageName).Preserve();
             return task;
         }
 
-        static async UniTask<(Semver release, Semver PreRelease)> GetVersionsCore(string listingsURL, string packageName) {
+        static async UniTask<(Semver release, Semver preRelease)> GetVersionsCore(string listingsURL, string packageName) {
             var listing = await GetListing(listingsURL);
             if (!listing.TryGetValue(packageName, out var versions)) return default;
             return versions;
         }
 
-        static UniTask<Dictionary<string, (Semver release, Semver PreRelease)>> GetListing(string listingsURL) {
+        static UniTask<Dictionary<string, (Semver release, Semver preRelease)>> GetListing(string listingsURL) {
             if (!listingCache.TryGetValue(listingsURL, out var task))
                 listingCache[listingsURL] = task = GetListingCore(listingsURL).Preserve();
             return task;
         }
 
-        static async UniTask<Dictionary<string, (Semver release, Semver PreRelease)>> GetListingCore(string listingsURL) {
+        static async UniTask<Dictionary<string, (Semver release, Semver preRelease)>> GetListingCore(string listingsURL) {
             await UniTask.SwitchToMainThread();
             var req = UnityWebRequest.Get(listingsURL);
             var results = new Dictionary<string, (Semver, Semver)>();
