@@ -61,7 +61,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         /// <summary>
         /// The package name.
         /// </summary>
-        public string PackageName => packageDisplayName ?? "Unknown Package";
+        public string PackageName => string.IsNullOrEmpty(packageDisplayName) ? "Unknown Package" : packageDisplayName;
 
         /// <summary>
         /// The current version of the package.
@@ -158,6 +158,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (packageInfo != null) {
                 packageName = packageInfo.name;
                 packageDisplayName = packageInfo.displayName;
+                if (string.IsNullOrWhiteSpace(packageDisplayName))
+                    packageDisplayName = packageName;
                 packageVersion = packageInfo.version;
             }
             availableVersion = "";
@@ -305,7 +307,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (!string.IsNullOrEmpty(availableVersion)) {
                 EditorGUILayout.Space();
                 using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox)) {
-                    var infoContent = GetInfoContent("PackageSelfUpdater.update_available", availableVersion);
+                    var infoContent = GetInfoContent("PackageSelfUpdater.update_available", availableVersion, packageDisplayName);
                     EditorGUILayout.LabelField(infoContent, EditorStyles.wordWrappedLabel);
 #if VPM_RESOLVER_INCLUDED
                     if (GUILayout.Button(i18n.GetLocalizedContent("PackageSelfUpdater.update_available:confirm"), GUILayout.ExpandWidth(false)))

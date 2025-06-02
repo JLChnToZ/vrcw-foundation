@@ -94,15 +94,11 @@ namespace JLChnToZ.VRC.Foundation {
         /// <returns>
         /// An integer that indicates the relative order of the instances.
         /// </returns>
-        public readonly int CompareTo(Semver other) {
-            int comp = major.CompareTo(other.major);
-            if (comp != 0) return comp;
-            comp = minor.CompareTo(other.minor);
-            if (comp != 0) return comp;
-            comp = patch.CompareTo(other.patch);
-            if (comp != 0) return comp;
-            return CompareIdentifier(other.prerelease);
-        }
+        public readonly int CompareTo(Semver other) =>
+            major != other.major ? major > other.major ? 1 : -1 :
+            minor != other.minor ? minor > other.minor ? 1 : -1 :
+            patch != other.patch ? patch > other.patch ? 1 : -1 :
+            CompareIdentifier(other.prerelease);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         int CompareIdentifier(Identifier[] otherPR) {

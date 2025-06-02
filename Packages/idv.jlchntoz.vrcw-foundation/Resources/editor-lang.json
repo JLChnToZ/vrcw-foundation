@@ -41,7 +41,7 @@
         "PackageSelfUpdater.update_message_no_vcc:alt": "How to migrate?",
         "PackageSelfUpdater.update_message": "Consider install {0} via Creator Companion to get automatic updates.",
         "PackageSelfUpdater.update_message:confirm": "Resolve",
-        "PackageSelfUpdater.update_available": "New Version Available! (v{0})",
+        "PackageSelfUpdater.update_available": "New version available for {1}! (v{0})",
         "PackageSelfUpdater.update_available:confirm": "Update",
         "PackageSelfUpdater.update_progress:title": "Updating Package",
         "PackageSelfUpdater.update_progress:content": "Updating {0}..."
@@ -93,7 +93,7 @@
         "PackageSelfUpdater.update_message_no_vcc:how": "如何遷移？",
         "PackageSelfUpdater.update_message": "請考慮透過 Creator Companion 安裝 {0} 以獲得自動更新。",
         "PackageSelfUpdater.update_message:confirm": "遷移安裝",
-        "PackageSelfUpdater.update_available": "有新版本可用！(v{0})",
+        "PackageSelfUpdater.update_available": "{1} 有新版本可用！(v{0})",
         "PackageSelfUpdater.update_available:confirm": "更新",
         "PackageSelfUpdater.update_progress:title": "正在更新套件",
         "PackageSelfUpdater.update_progress:content": "正在更新 {0}..."
@@ -145,7 +145,7 @@
         "PackageSelfUpdater.update_message_no_vcc:how": "如何迁移？",
         "PackageSelfUpdater.update_message": "请考虑透过 Creator Companion 安装 {0} 以获得自动更新。",
         "PackageSelfUpdater.update_message:confirm": "迁移安装",
-        "PackageSelfUpdater.update_available": "有新版本可用！(v{0})",
+        "PackageSelfUpdater.update_available": "{1} 有新版本可用！(v{0})",
         "PackageSelfUpdater.update_available:confirm": "更新",
         "PackageSelfUpdater.update_progress:title": "正在更新套件",
         "PackageSelfUpdater.update_progress:content": "正在更新 {0}..."
@@ -192,7 +192,7 @@
         "PackageSelfUpdater.update_message_no_vcc:alt": "どのように移行しますか？",
         "PackageSelfUpdater.update_message": "自動更新を受け取るために {0} を Creator Companion を介してインストールすることを検討してください。",
         "PackageSelfUpdater.update_message:confirm": "解決",
-        "PackageSelfUpdater.update_available": "新しいバージョンが利用可能です！（v{0}）",
+        "PackageSelfUpdater.update_available": "{1} の新しいバージョンが利用可能です！ (v{0})",
         "PackageSelfUpdater.update_available:confirm": "更新",
         "PackageSelfUpdater.update_progress:title": "パッケージを更新中",
         "PackageSelfUpdater.update_progress:content": "{0} を更新中..."
@@ -239,7 +239,7 @@
         "PackageSelfUpdater.update_message_no_vcc:alt": "어떻게 이전합니까?",
         "PackageSelfUpdater.update_message": "Creator Companion을 통해 {0}을(를) 설치하여 자동 업데이트를 받을 수 있습니다.",
         "PackageSelfUpdater.update_message:confirm": "해결",
-        "PackageSelfUpdater.update_available": "새 버전이 사용 가능합니다! (v{0})",
+        "PackageSelfUpdater.update_available": "{1} 에 대한 새 버전이 사용 가능합니다! (v{0})",
         "PackageSelfUpdater.update_available:confirm": "업데이트",
         "PackageSelfUpdater.update_progress:title": "패키지 업데이트 중",
         "PackageSelfUpdater.update_progress:content": "{0}을(를) 업데이트 중..."
