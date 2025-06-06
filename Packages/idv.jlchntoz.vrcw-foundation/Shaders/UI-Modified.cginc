@@ -7,7 +7,7 @@
 #pragma multi_compile_local __ UNITY_UI_ALPHACLIP
 #pragma shader_feature_local __ _VRC_SUPPORT
 #pragma shader_feature_local __ _MIRROR_FLIP
-#pragma shader_feature_local __ _BILLBOARD
+#pragma shader_feature_local __ _BILLBOARD _DOUBLE_SIDED
 
 #ifdef MSDF_OVERRIDE
 #define MSDF 2
@@ -33,7 +33,7 @@ struct v2f {
     #endif
     float2 generatedtexcoord : TEXCOORD1;
     centroid float2 centroidtexcoord : TEXCOORD2;
-    #ifdef UNITY_UI_CLIP_RECT
+    #if defined(UNITY_UI_CLIP_RECT) || defined(_DOUBLE_SIDED)
         float4 localpos : TEXCOORD3;
     #endif
     UNITY_VERTEX_OUTPUT_STEREO
@@ -125,7 +125,7 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
         localpos = mul(billboard(), localpos);
     #endif
 
-    #ifdef UNITY_UI_CLIP_RECT
+    #if defined(UNITY_UI_CLIP_RECT) || (defined(GEOM_SUPPORT) && defined(_DOUBLE_SIDED))
         OUT.localpos = localpos;
     #endif
     OUT.vertex = UnityObjectToClipPos(localpos);
@@ -157,21 +157,43 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
 }
 
 #ifdef GEOM_SUPPORT
+#ifdef _DOUBLE_SIDED
+void appendFlippedV2f(v2f v, inout TriangleStream<v2f> triStream) {
+    v.localpos.x = -v.localpos.x;
+    v.vertex = UnityObjectToClipPos(v.localpos);
+    triStream.Append(v);
+}
+#endif
+
+#ifdef _DOUBLE_SIDED
+[maxvertexcount(6)]
+#else
 [maxvertexcount(3)]
+#endif
 void geom(triangle v2f input[3], inout TriangleStream<v2f> triStream) {
+    v2f v0, v1, v2;
     #if defined(_VRC_SUPPORT) && defined(_MIRROR_FLIP)
     if (_VRChatMirrorMode > 0) {
-        triStream.Append(input[0]);
-        triStream.Append(input[2]);
-        triStream.Append(input[1]);
+        v0 = input[2];
+        v1 = input[1];
+        v2 = input[0];
     } else
     #endif
     {
-        triStream.Append(input[0]);
-        triStream.Append(input[1]);
-        triStream.Append(input[2]);
+        v0 = input[0];
+        v1 = input[1];
+        v2 = input[2];
     }
+    triStream.Append(v0);
+    triStream.Append(v1);
+    triStream.Append(v2);
     triStream.RestartStrip();
+    #ifdef _DOUBLE_SIDED
+        appendFlippedV2f(v0, triStream);
+        appendFlippedV2f(v1, triStream);
+        appendFlippedV2f(v2, triStream);
+        triStream.RestartStrip();
+    #endif
 }
 #endif
 

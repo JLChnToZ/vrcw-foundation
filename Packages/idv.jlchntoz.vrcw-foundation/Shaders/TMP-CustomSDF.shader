@@ -11,14 +11,15 @@
         _WeightBold ("Weight Bold", Float) = 0.5
         _ScaleRatioA ("Scale Ratio A", Float) = 1
 
-        [Header(Experimental Billboard Settings)]
-        [Toggle(_BILLBOARD)] _Billboard ("Billboard (Require Zero Rotation On Transform)", Float) = 0
-
         [Header(Conditional Appearance in VRChat Camera Mirror)]
         [Toggle(_VRC_SUPPORT)] _VRCSupport ("Enable", Int) = 0
         [EnumMask(Direct Look, VR Handheld Camera, Desktop Handheld Camera, Screenshot, VR Mirror, VR Handheld Camera in Mirror, _, VR Screenshot in Mirror, Desktop Mirror, _, Desktop Handheld Camera in Mirror, Desktop Screenshot in Mirror)]
         _RenderMode ("Visible Modes", Int) = 4095
         [Toggle(_MIRROR_FLIP)] _MirrorFlip ("Flip in Mirror", Int) = 0
+
+        [Header(Experimental Settings)]
+        [Toggle(_BILLBOARD)] _Billboard ("Billboard (Require Zero Rotation On Transform)", Int) = 0
+        [Toggle(_DOUBLE_SIDED)] _DoubleSided ("Double Sided (PC Only)", Int) = 0
 
         [Header(Render Pipeline Settings)]
         [Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0
