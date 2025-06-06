@@ -32,6 +32,7 @@
         [Enum(UnityEngine.Rendering.CompareFunction)] unity_GUIZTestMode("Z Test Mode", Int) = 4
         [Enum(UnityEngine.Rendering.CullMode)] _CullMode ("Cull Mode", Int) = 2
         [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
+        [Toggle(_)] _ZWrite ("Z Write", Int) = 0
     }
 
     SubShader {
@@ -53,7 +54,7 @@
         LOD 300
         Cull [_CullMode]
         Lighting Off
-        ZWrite Off
+        ZWrite [_ZWrite]
         ZTest [unity_GUIZTestMode]
         Fog { Mode Off }
         Blend One OneMinusSrcAlpha
@@ -95,7 +96,7 @@
         LOD 200
         Cull Off
         Lighting Off
-        ZWrite Off
+        ZWrite [_ZWrite]
         ZTest [unity_GUIZTestMode]
         Fog { Mode Off }
         Blend SrcAlpha OneMinusSrcAlpha

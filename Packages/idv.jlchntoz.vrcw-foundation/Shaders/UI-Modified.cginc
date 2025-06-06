@@ -114,8 +114,8 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
 
     float4 localpos = v.vertex;
     #ifdef _VRC_SUPPORT
-        uint currentRenderMode = pow(2, _VRChatCameraMode + _VRChatMirrorMode * 4);
-        if (_RenderMode / currentRenderMode % 2 == 0) return OUT;
+        uint currentRenderMode = 1 << (uint)(_VRChatCameraMode + _VRChatMirrorMode * 4);
+        if ((_RenderMode & currentRenderMode) == 0) return OUT;
         #if (defined(_BILLBOARD) && !defined(_MIRROR_FLIP)) || (!defined(_BILLBOARD) && defined(_MIRROR_FLIP))
             if (_VRChatMirrorMode > 0) localpos.x = -localpos.x;
         #endif

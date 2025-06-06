@@ -156,7 +156,7 @@ namespace JLChnToZ.VRC.Foundation {
             return hc.ToHashCode();
         }
 
-        public override readonly string ToString() {
+        public readonly override string ToString() {
             var sb = new StringBuilder();
             sb.Append(Major).Append('.').Append(Minor).Append('.').Append(Patch);
             if (prerelease != null && prerelease.Length > 0)
@@ -205,33 +205,32 @@ namespace JLChnToZ.VRC.Foundation {
                     numericValue = 0;
             }
 
-            public readonly int CompareTo(Identifier other) {
-                if (numericValue > 0)
-                    return other.numericValue > 0 ? numericValue.CompareTo(other.numericValue) : 1;
-                if (other.numericValue > 0)
-                    return -1;
-                if (string.IsNullOrWhiteSpace(stringValue))
-                    return string.IsNullOrWhiteSpace(other.stringValue) ? 0 : -1;
-                if (string.IsNullOrWhiteSpace(other.stringValue))
-                    return 1;
-                return string.Compare(stringValue, other.stringValue, StringComparison.Ordinal);
-            }
+            public readonly int CompareTo(Identifier other) =>
+                numericValue > 0 ?
+                    other.numericValue > 0 ?
+                        numericValue.CompareTo(other.numericValue) :
+                    1 :
+                other.numericValue > 0 ?
+                    -1 :
+                string.IsNullOrWhiteSpace(stringValue) ?
+                    string.IsNullOrWhiteSpace(other.stringValue) ?
+                        0 :
+                    -1 :
+                string.IsNullOrWhiteSpace(other.stringValue) ?
+                    1 :
+                string.Compare(stringValue, other.stringValue, StringComparison.Ordinal);
 
-            public readonly bool Equals(Identifier other) {
-                if (numericValue > 0)
-                    return other.numericValue > 0 && numericValue == other.numericValue;
-                if (other.numericValue > 0)
-                    return false;
-                return string.Equals(stringValue, other.stringValue, StringComparison.Ordinal);
-            }
+            public readonly bool Equals(Identifier other) =>
+                numericValue > 0 ? other.numericValue > 0 && numericValue == other.numericValue :
+                other.numericValue == 0 && string.Equals(stringValue, other.stringValue, StringComparison.Ordinal);
 
-            public override readonly bool Equals(object obj) =>
+            public readonly override bool Equals(object obj) =>
                 obj is Identifier other && Equals(other);
 
-            public override readonly int GetHashCode() => numericValue > 0 ?
+            public readonly override int GetHashCode() => numericValue > 0 ?
                 unchecked((int)numericValue) : stringValue?.GetHashCode() ?? 0;
 
-            public override readonly string ToString() => stringValue ?? numericValue.ToString();
+            public readonly override string ToString() => stringValue ?? numericValue.ToString();
         }
     }
 }
