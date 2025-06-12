@@ -12,6 +12,9 @@
 #ifdef MSDF_OVERRIDE
 #define MSDF 2
 #endif
+#ifndef GEOM_SUPPORT
+#undef _DOUBLE_SIDED
+#endif
 
 struct appdata_t {
     float4 vertex : POSITION;
@@ -125,7 +128,7 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
         localpos = mul(billboard(), localpos);
     #endif
 
-    #if defined(UNITY_UI_CLIP_RECT) || (defined(GEOM_SUPPORT) && defined(_DOUBLE_SIDED))
+    #if defined(UNITY_UI_CLIP_RECT) || defined(_DOUBLE_SIDED)
         OUT.localpos = localpos;
     #endif
     OUT.vertex = UnityObjectToClipPos(localpos);
