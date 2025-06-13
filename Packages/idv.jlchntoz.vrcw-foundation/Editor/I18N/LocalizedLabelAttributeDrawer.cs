@@ -68,8 +68,8 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
             var enumData = EditorI18N.Instance.GetLocalizedEnum(type, attr?.Key);
             using (new EditorGUI.PropertyScope(position, label, property))
             using (var changeCheck = new EditorGUI.ChangeCheckScope()) {
+                long value = property.intValue;
                 if (enumData.isFlags) {
-                    long value = property.longValue;
                     int mask = 0;
                     for (int i = 0; i < enumData.enumValues.Length; i++)
                         if ((value & enumData.enumValues[i]) != 0)
@@ -87,13 +87,13 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                                         value &= ~enumData.enumValues[i];
                                 }
                             }
-                            property.longValue = value;
+                            property.intValue = (int)value;
                         }
                     }
                 } else {
-                    int index = Mathf.Max(0, Array.IndexOf(enumData.enumValues, property.longValue));
+                    int index = Mathf.Max(0, Array.IndexOf(enumData.enumValues, value));
                     index = EditorGUI.Popup(position, label, index, enumData.enumNames as GUIContent[]);
-                    if (changeCheck.changed) property.longValue = enumData.enumValues[index];
+                    if (changeCheck.changed) property.intValue = (int)enumData.enumValues[index];
                 }
             }
         }

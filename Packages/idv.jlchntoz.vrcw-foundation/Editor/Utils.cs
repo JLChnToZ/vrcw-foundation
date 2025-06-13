@@ -240,6 +240,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 values = null;
                 return false;
             }
+            bool isFlags = type.GetCustomAttribute<FlagsAttribute>() != null;
             var rawValues = Enum.GetValues(type);
             var typeCode = Type.GetTypeCode(type);
             var nameList = new List<string>(rawValues.Length);
@@ -250,7 +251,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 long value = typeCode == TypeCode.UInt64 ?
                     unchecked((long)Convert.ToUInt64(enumValue)) :
                     Convert.ToInt64(enumValue);
-                if (value == 0) continue;
+                if (isFlags && value == 0) continue;
                 var name = Enum.GetName(type, enumValue);
                 var matchingMember = type.GetField(name);
                 if (matchingMember != null) {
@@ -273,7 +274,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             // starting from the ones with the most bits set,
             // which likely to be shorthands of common combinations,
             // including something like "All".
-            if (nameList.Count > 32) {
+            if (isFlags && nameList.Count > 32) {
                 int count = nameList.Count;
                 var skip = new bool[count];
                 var bitCount = new int[count];
