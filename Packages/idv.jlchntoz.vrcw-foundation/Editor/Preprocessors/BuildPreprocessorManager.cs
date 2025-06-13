@@ -6,6 +6,9 @@ using UnityEngine.SceneManagement;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
+#if VRC_SDK_VRCSDK3
+using VRC.SDK3.Editor;
+#endif
 
 using UnityObject = UnityEngine.Object;
 

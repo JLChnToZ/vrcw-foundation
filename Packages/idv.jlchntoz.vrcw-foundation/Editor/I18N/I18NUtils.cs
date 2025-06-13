@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEditor;
+using JLChnToZ.VRC.Foundation.Editors;
 
 namespace JLChnToZ.VRC.Foundation.I18N.Editors {
     using static JLChnToZ.VRC.Foundation.Editors.Utils;
@@ -9,6 +14,8 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
     /// For drawing localized content, dialogs, and language selection field.
     /// </summary>
     public static class I18NUtils {
+        static ConditionalWeakTable<EditorI18N, LocalizedEnumCache> localizedEnumNamesCache = new ConditionalWeakTable<EditorI18N, LocalizedEnumCache>();
+
         /// <inheritdoc cref="GetLocalizedContent(EditorI18N, string, object[])"/>
         public static GUIContent GetLocalizedContent(this EditorI18N i18n, string key) =>
             GetTempContent(i18n.GetOrDefault(key), i18n[$"{key}:tooltip"]);
@@ -29,7 +36,7 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
         /// </remarks>
         public static GUIContent GetLocalizedContent(this EditorI18N i18n, string key, params object[] format) =>
             GetTempContent(string.Format(i18n.GetOrDefault(key), format), i18n[$"{key}:tooltip"]);
-        
+
 
         /// <inheritdoc cref="DisplayLocalizedDialog1(EditorI18N, string, object[])"/>
         public static void DisplayLocalizedDialog1(this EditorI18N i18n, string key) =>
@@ -101,7 +108,7 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                 i18n.GetOrDefault($"{key}:negative"),
                 i18n.GetOrDefault($"{key}:alt")
             );
-        
+
         /// <summary>
         /// Get localized dialog with three buttons.
         /// </summary>
@@ -139,6 +146,54 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
             }
             var machineTranslated = i18n["MachineTranslationMessage"];
             if (!string.IsNullOrEmpty(machineTranslated)) EditorGUILayout.HelpBox(machineTranslated, MessageType.Info);
+        }
+
+        public static LocalizedEnum GetLocalizedEnum(this EditorI18N i18n, Type type, string key = null) {
+            if (!type.IsEnum) throw new ArgumentException("Type must be an enum type.", nameof(type));
+            if (string.IsNullOrEmpty(key)) key = type.FullName;
+            if (!localizedEnumNamesCache.TryGetValue(i18n, out var cache)) {
+                cache = new LocalizedEnumCache();
+                localizedEnumNamesCache.Add(i18n, cache);
+            }
+            return cache.GetLocalizedEnum(i18n, type, key);
+        }
+
+        public struct LocalizedEnum {
+            public Array enumNames;
+            public long[] enumValues;
+            public bool isFlags;
+        }
+
+        class LocalizedEnumCache {
+            string lastCachedLanguage;
+            readonly Dictionary<(Type, string), LocalizedEnum> localizedEnumNamesCache = new Dictionary<(Type, string), LocalizedEnum>();
+
+            public LocalizedEnum GetLocalizedEnum(EditorI18N i18n, Type type, string key) {
+                if (i18n.CurrentLanguage != lastCachedLanguage) {
+                    localizedEnumNamesCache.Clear();
+                    lastCachedLanguage = i18n.CurrentLanguage;
+                }
+                if (!localizedEnumNamesCache.TryGetValue((type, key), out var cache)) {
+                    if (!GetTypedNamesAndValues(type, out var enumNames, out var rawEnumValues, false))
+                        throw new ArgumentException($"Type {type.FullName} is not a valid enum type.", nameof(type));
+                    cache.enumValues = new long[rawEnumValues.Length];
+                    cache.isFlags = type.IsDefined(typeof(FlagsAttribute), false);
+                    cache.enumNames = cache.isFlags ? new string[enumNames.Length] : new GUIContent[enumNames.Length];
+                    for (int i = 0; i < enumNames.Length; i++) {
+                        var enumName = enumNames[i];
+                        var localizedName = i18n[$"{key}.{enumName}"];
+                        if (string.IsNullOrEmpty(localizedName)) {
+                            var attr = type.GetField(enumName)?.GetCustomAttribute<InspectorNameAttribute>();
+                            localizedName = attr != null && !string.IsNullOrWhiteSpace(attr.displayName) ?
+                                attr.displayName :
+                                ObjectNames.NicifyVariableName(enumName);
+                        }
+                        cache.enumNames.SetValue(cache.isFlags ? localizedName : new GUIContent(localizedName), i);
+                    }
+                    localizedEnumNamesCache[(type, key)] = cache;
+                }
+                return cache;
+            }
         }
     }
 }
