@@ -2,18 +2,18 @@
     "name": "JLChnToZ.VRC.Foundation.Editor",
     "rootNamespace": "JLChnToZ.VRC.Foundation.Editors",
     "references": [
+        "Unity.TextMeshPro",
+        "UniTask",
+        "com.vrchat.core.vpm-resolver.Editor",
         "VRC.SDK3",
         "VRC.SDK3.Editor",
         "VRC.SDKBase.Editor",
         "VRC.Udon",
         "VRC.Udon.Serialization.OdinSerializer",
         "VRC.Udon.Editor",
-        "com.vrchat.core.vpm-resolver.Editor",
         "UdonSharp.Runtime",
         "UdonSharp.Editor",
-        "UniTask",
-        "JLChnToZ.VRC.Foundation",
-        "Unity.TextMeshPro"
+        "JLChnToZ.VRC.Foundation"
     ],
     "includePlatforms": [
         "Editor"

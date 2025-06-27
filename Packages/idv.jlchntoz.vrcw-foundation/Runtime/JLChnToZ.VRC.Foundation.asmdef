@@ -19,6 +19,11 @@
             "name": "com.vrchat.worlds",
             "expression": "3.7.0",
             "define": "VRCSDK_3_7_0_OR_NEWER"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.8.1",
+            "define": "VRCSDK_3_8_1_OR_NEWER"
         }
     ],
     "noEngineReferences": false
