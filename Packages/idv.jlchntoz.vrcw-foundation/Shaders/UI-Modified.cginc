@@ -9,6 +9,11 @@
 #pragma shader_feature_local __ _MIRROR_FLIP
 #pragma shader_feature_local __ _BILLBOARD _DOUBLE_SIDED
 
+#ifdef _VRC_SUPPORT
+#include "VRCMirrorCameraSelector.cginc"
+#endif
+#include "Utils.cginc"
+
 #ifdef MSDF_OVERRIDE
 #define MSDF 2
 #endif
@@ -70,41 +75,9 @@ float4 _MainTex_ST;
     float _PixelRange;
 #endif
 
-#ifdef _VRC_SUPPORT
-    int _RenderMode;
-
-    int _VRChatCameraMode; // 0 = Normal, 1 = VR Handheld Camera, 2 = Desktop Handheld Camera, 3 = Screenshot
-    int _VRChatMirrorMode; // 0 = Normal, 1 = VR Mirror, 2 = Desktop Mirror
-#endif
-
 #ifndef GEOM_SUPPORT
     int _Cull;
 #endif
-
-float median(float3 col) {
-    return max(min(col.r, col.g), min(max(col.r, col.g), col.b));
-}
-
-bool tryNormalize(inout float3 col) {
-    float sqrLen = dot(col, col);
-    if (sqrLen < 0.0001f) return 0;
-    col *= rsqrt(sqrLen);
-    return 1;
-}
-
-float4x4 billboard() {
-    float4x4 m = mul(unity_CameraToWorld, unity_WorldToObject);
-    m._m03_m13_m23_m33 = float4(0, 0, 0, 1);
-    float3 v0 = m._m00_m10_m20;
-    if (!tryNormalize(v0)) return m;
-    float3 v1 = m._m01_m11_m21;
-    v1 -= dot(v1, v0) * v0;
-    if (!tryNormalize(v1)) return m;
-    m._m00_m10_m20 = v0;
-    m._m01_m11_m21 = v1;
-    m._m02_m12_m22 = cross(v0, v1);
-    return m;
-}
 
 v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     v2f OUT;
@@ -117,10 +90,9 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
 
     float4 localpos = v.vertex;
     #ifdef _VRC_SUPPORT
-        uint currentRenderMode = 1 << (uint)(_VRChatCameraMode + _VRChatMirrorMode * 4);
-        if ((_RenderMode & currentRenderMode) == 0) return OUT;
+        if (!isVisibleInVRC()) return OUT;
         #if (defined(_BILLBOARD) && !defined(_MIRROR_FLIP)) || (!defined(_BILLBOARD) && defined(_MIRROR_FLIP))
-            if (_VRChatMirrorMode > 0) localpos.x = -localpos.x;
+            if (isInVRCMirror()) localpos.x = -localpos.x;
         #endif
     #endif
 
@@ -176,7 +148,7 @@ void appendFlippedV2f(v2f v, inout TriangleStream<v2f> triStream) {
 void geom(triangle v2f input[3], inout TriangleStream<v2f> triStream) {
     v2f v0, v1, v2;
     #if defined(_VRC_SUPPORT) && defined(_MIRROR_FLIP)
-    if (_VRChatMirrorMode > 0) {
+    if (isInVRCMirror()) {
         v0 = input[2];
         v1 = input[1];
         v2 = input[0];
@@ -231,15 +203,15 @@ half4 frag(
         color *= saturate((d - IN.texcoord.z) * rsqrt(abs(dot(ddxuv, ddyuv))) * IN.texcoord.w + 0.5);
     #elif MSDF
     #ifdef MSDF_OVERRIDE
-        float2 msdfUnit = _PixelRange / _MSDFTex_TexelSize.zw;
+        float2 msdfUnit = _PixelRange * _MSDFTex_TexelSize.xy;
         float4 sampleCol = tex2D(_MSDFTex, texcoord);
     #else
-        float2 msdfUnit = _PixelRange / _MainTex_TexelSize.zw;
+        float2 msdfUnit = _PixelRange * _MainTex_TexelSize.xy;
         float4 sampleCol = tex2D(_MainTex, texcoord);
     #endif
         float sigDist = median(sampleCol.xyz) - 0.5;
         sigDist *= max(dot(msdfUnit, 0.5 / fwidth(texcoord)), 1); // Max to handle fading out to quads in the distance
-        float opacity = clamp(sigDist + 0.5, 0.0, 1.0);
+        float opacity = saturate(sigDist + 0.5);
         color *= float4(1, 1, 1, opacity) + _TextureSampleAdd;
     #else
         color *= tex2D(_MainTex, texcoord) + _TextureSampleAdd;
