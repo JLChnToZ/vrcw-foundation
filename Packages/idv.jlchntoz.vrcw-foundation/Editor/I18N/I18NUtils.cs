@@ -174,9 +174,8 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                     lastCachedLanguage = i18n.CurrentLanguage;
                 }
                 if (!localizedEnumNamesCache.TryGetValue((type, key), out var cache)) {
-                    if (!GetTypedNamesAndValues(type, out var enumNames, out var rawEnumValues, false))
+                    if (!GetTypedNamesAndValues(type, out var enumNames, out cache.enumValues, false))
                         throw new ArgumentException($"Type {type.FullName} is not a valid enum type.", nameof(type));
-                    cache.enumValues = new long[rawEnumValues.Length];
                     cache.isFlags = type.IsDefined(typeof(FlagsAttribute), false);
                     cache.enumNames = cache.isFlags ? new string[enumNames.Length] : new GUIContent[enumNames.Length];
                     for (int i = 0; i < enumNames.Length; i++) {
