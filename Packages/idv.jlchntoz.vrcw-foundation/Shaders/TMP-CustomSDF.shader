@@ -18,8 +18,13 @@
         [Toggle(_MIRROR_FLIP)] _MirrorFlip ("Flip in Mirror", Int) = 0
 
         [Header(Experimental Settings)]
-        [Toggle(_BILLBOARD)] _Billboard ("Billboard (Require Zero Rotation On Transform)", Int) = 0
         [Toggle(_DOUBLE_SIDED)] _DoubleSided ("Double Sided (PC Only)", Int) = 0
+        [Toggle(_BILLBOARD)] _Billboard ("Billboard (Require Zero Rotation On Transform)", Int) = 0
+        [Toggle(_SCREENSPACE_OVERLAY)] _ScreenSpaceOverlay ("Screen Space Overlay", Int) = 0
+
+        [Header(Screenspace Overlay Settings)]
+        _CanvasRect ("Canvas Rect", Vector) = (0, 0, 1, 1)
+        _AspectRatioMatch ("Aspect Ratio Match (0 = Width, 1 = Height)", Range(0, 1)) = 0.5
 
         [Header(Render Pipeline Settings)]
         [Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0

@@ -3,11 +3,17 @@
 #include "UnityCG.cginc"
 #include "UnityUI.cginc"
 
-#pragma multi_compile_local __ UNITY_UI_CLIP_RECT
-#pragma multi_compile_local __ UNITY_UI_ALPHACLIP
-#pragma shader_feature_local __ _VRC_SUPPORT
-#pragma shader_feature_local __ _MIRROR_FLIP
-#pragma shader_feature_local __ _BILLBOARD _DOUBLE_SIDED
+#pragma multi_compile_local_vertex _ UNITY_UI_CLIP_RECT
+#pragma multi_compile_local_fragment _ UNITY_UI_CLIP_RECT
+#pragma multi_compile_local_fragment _ UNITY_UI_ALPHACLIP
+#pragma shader_feature_local_vertex _ _VRC_SUPPORT
+#pragma shader_feature_local_vertex _ _MIRROR_FLIP
+#pragma shader_feature_local_vertex _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
+#ifdef GEOM_SUPPORT
+#pragma shader_feature_local_geometry _ _VRC_SUPPORT
+#pragma shader_feature_local_geometry _ _MIRROR_FLIP
+#pragma shader_feature_local_geometry _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
+#endif
 
 #ifdef _VRC_SUPPORT
 #include "VRCMirrorCameraSelector.cginc"
@@ -19,6 +25,13 @@
 #endif
 #ifndef GEOM_SUPPORT
 #undef _DOUBLE_SIDED
+#endif
+#ifdef _SCREENSPACE_OVERLAY
+#undef _DOUBLE_SIDED
+#undef _BILLBOARD
+#endif
+#ifdef _DOUBLE_SIDED
+#undef _BILLBOARD
 #endif
 
 struct appdata_t {
@@ -75,6 +88,11 @@ float4 _MainTex_ST;
     float _PixelRange;
 #endif
 
+#ifdef _SCREENSPACE_OVERLAY
+    float4 _CanvasRect;
+    float _AspectRatioMatch;
+#endif
+
 #ifndef GEOM_SUPPORT
     int _Cull;
 #endif
@@ -103,7 +121,20 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     #if defined(UNITY_UI_CLIP_RECT) || defined(_DOUBLE_SIDED)
         OUT.localpos = localpos;
     #endif
-    OUT.vertex = UnityObjectToClipPos(localpos);
+    #if _SCREENSPACE_OVERLAY
+        localpos.xy = (localpos.xy - _CanvasRect.xy) * 2 / _CanvasRect.zw;
+        float2 adjustment = _ScreenParams.xy * _CanvasRect.wz;
+        adjustment = float2(adjustment.y / adjustment.x, adjustment.x / adjustment.y);
+        localpos.xy *= lerp(float2(adjustment.x, 1), float2(1, adjustment.y), _AspectRatioMatch);
+        localpos.y = -localpos.y;
+        localpos.z = saturate((localpos.z - _ProjectionParams.y) / (_ProjectionParams.z - _ProjectionParams.y));
+        #if UNITY_REVERSED_Z
+            localpos.z = 1 - localpos.z;
+        #endif
+        OUT.vertex = localpos;
+    #else
+        OUT.vertex = UnityObjectToClipPos(localpos);
+    #endif
 
     #if TMPRO_SDF
         OUT.texcoord = float4(

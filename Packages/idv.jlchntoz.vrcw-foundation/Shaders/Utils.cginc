@@ -27,4 +27,28 @@ inline float4x4 billboard() {
     m._13_23_33 = cross(v0, v1);
     return m;
 }
+
+inline void noclip(inout float4 clipPos) {
+    #ifdef SHADER_TARGET_GLSL
+        clipPos.z = clamp(clipPos.z, -0.999999, 0.999999);
+    #else
+        clipPos.z = clamp(clipPos.z, 0.000001, 0.999999);
+    #endif
+}
+
+inline void nearest(inout float4 clipPos) {
+    #ifdef SHADER_TARGET_GLSL
+        clipPos.zw = float2(-0.999999, 1.0);
+    #else
+        clipPos.zw = float2(0.999999, 1.0);
+    #endif
+}
+
+inline void farthest(inout float4 clipPos) {
+    #ifdef SHADER_TARGET_GLSL
+        clipPos.zw = float2(0.999999, 1.0);
+    #else
+        clipPos.zw = float2(0.000001, 1.0);
+    #endif
+}
 #endif
