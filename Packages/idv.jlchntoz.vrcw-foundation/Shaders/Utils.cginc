@@ -15,7 +15,13 @@ inline bool tryNormalize(inout float3 col) {
 }
 
 inline float4x4 billboard() {
-    float4x4 m = mul(unity_CameraToWorld, unity_WorldToObject);
+    float4x4 m;
+    #ifdef USING_STEREO_MATRICES
+        m = (unity_StereoCameraToWorld[0] + unity_StereoCameraToWorld[1]) * 0.5;
+    #else
+        m = unity_CameraToWorld;
+    #endif
+    m = mul(m, unity_WorldToObject);
     m._14_24_34_44 = float4(0, 0, 0, 1);
     float3 v0 = m._11_21_31;
     if (!tryNormalize(v0)) return m;
