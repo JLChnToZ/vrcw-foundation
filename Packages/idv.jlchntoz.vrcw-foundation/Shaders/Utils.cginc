@@ -51,4 +51,24 @@ inline void farthest(inout float4 clipPos) {
         clipPos.zw = float2(0.000001, 1.0);
     #endif
 }
+
+#ifdef USING_STEREO_MATRICES
+inline float4 proj2world(float4 clipPos, int eye) {
+    return mul(unity_StereoCameraToWorld[eye], mul(unity_StereoCameraInvProjection[eye], clipPos));
+}
+#endif
+
+inline float4 directScreenSpace(float4 localpos) {
+    localpos.y = -localpos.y;
+    #ifdef USING_STEREO_MATRICES
+        float4 left = proj2world(localpos, 0);
+        float4 right = proj2world(localpos, 1);
+        localpos = mul(unity_CameraProjection, mul(unity_WorldToCamera, (left + right) * 0.5));
+    #endif
+    localpos.z = saturate((localpos.z - _ProjectionParams.y) / (_ProjectionParams.z - _ProjectionParams.y));
+    #if UNITY_REVERSED_Z
+        localpos.z = 1 - localpos.z;
+    #endif
+    return localpos;
+}
 #endif

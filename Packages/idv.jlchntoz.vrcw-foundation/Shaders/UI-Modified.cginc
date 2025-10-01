@@ -6,13 +6,15 @@
 #pragma multi_compile_local_vertex _ UNITY_UI_CLIP_RECT
 #pragma multi_compile_local_fragment _ UNITY_UI_CLIP_RECT
 #pragma multi_compile_local_fragment _ UNITY_UI_ALPHACLIP
-#pragma shader_feature_local_vertex _ _VRC_SUPPORT
-#pragma shader_feature_local_vertex _ _MIRROR_FLIP
+#pragma shader_feature_local_vertex _ _MIRROR_FLIP _VRC_SUPPORT
 #pragma shader_feature_local_vertex _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
 #ifdef GEOM_SUPPORT
-#pragma shader_feature_local_geometry _ _VRC_SUPPORT
-#pragma shader_feature_local_geometry _ _MIRROR_FLIP
+#pragma shader_feature_local_geometry _ _MIRROR_FLIP _VRC_SUPPORT
 #pragma shader_feature_local_geometry _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
+#endif
+
+#ifdef _MIRROR_FLIP
+#define _VRC_SUPPORT
 #endif
 
 #ifdef _VRC_SUPPORT
@@ -124,14 +126,9 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     #if _SCREENSPACE_OVERLAY
         localpos.xy = (localpos.xy - _CanvasRect.xy) * 2 / _CanvasRect.zw;
         float2 adjustment = _ScreenParams.xy * _CanvasRect.wz;
-        adjustment = float2(adjustment.y / adjustment.x, adjustment.x / adjustment.y);
+        adjustment = adjustment.yx / adjustment.xy;
         localpos.xy *= lerp(float2(adjustment.x, 1), float2(1, adjustment.y), _AspectRatioMatch);
-        localpos.y = -localpos.y;
-        localpos.z = saturate((localpos.z - _ProjectionParams.y) / (_ProjectionParams.z - _ProjectionParams.y));
-        #if UNITY_REVERSED_Z
-            localpos.z = 1 - localpos.z;
-        #endif
-        OUT.vertex = localpos;
+        OUT.vertex = directScreenSpace(localpos);
     #else
         OUT.vertex = UnityObjectToClipPos(localpos);
     #endif
@@ -178,7 +175,7 @@ void appendFlippedV2f(v2f v, inout TriangleStream<v2f> triStream) {
 #endif
 void geom(triangle v2f input[3], inout TriangleStream<v2f> triStream) {
     v2f v0, v1, v2;
-    #if defined(_VRC_SUPPORT) && defined(_MIRROR_FLIP)
+    #ifdef _MIRROR_FLIP
     if (isInVRCMirror()) {
         v0 = input[2];
         v1 = input[1];
