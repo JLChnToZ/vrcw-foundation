@@ -9,15 +9,21 @@ inline float median(float3 col) {
 
 inline bool tryNormalize(inout float3 col) {
     float sqrLen = dot(col, col);
-    if (sqrLen < 0.0001) return 0;
+    if (sqrLen < 0.0001220703125) return 0;
     col *= rsqrt(sqrLen);
     return 1;
 }
 
+inline bool tryCalculateUp(inout float3 up, float3 forward) {
+    if (!tryNormalize(up)) return 0;
+    up -= dot(up, forward) * forward;
+    return tryNormalize(up);
+}
+
 #ifdef USING_STEREO_MATRICES
-    #define _CenterCameraToWorld (unity_StereoCameraToWorld[0] + unity_StereoCameraToWorld[1]) * 0.5
+#define _CenterCameraToWorld (unity_StereoCameraToWorld[0] + unity_StereoCameraToWorld[1]) * 0.5
 #else
-    #define _CenterCameraToWorld unity_CameraToWorld
+#define _CenterCameraToWorld unity_CameraToWorld
 #endif
 
 inline float4x4 billboard() {
@@ -27,12 +33,12 @@ inline float4x4 billboard() {
     m._14_24_34_44 = float4(0, 0, 0, 1);
     float3 z = m._13_23_33;
     if (!tryNormalize(z)) return m;
-    float3 y = mul(world2Obj, float4(0, 1, 0, 0)).xyz;
-    if (!tryNormalize(y)) return m;
-    y -= dot(y, z) * z;
-    if (!tryNormalize(y)) return m;
+    float3 y = world2Obj._12_22_32;
+    if (!tryCalculateUp(y, z)) {
+        y = m._12_22_32;
+        if (!tryCalculateUp(y, z)) return m;
+    }
     float3 x = cross(y, z);
-    if (!tryNormalize(x)) return m;
     m._11_21_31 = x;
     m._12_22_32 = y;
     m._13_23_33 = cross(x, y);
