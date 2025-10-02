@@ -71,14 +71,14 @@ inline float4 proj2world(float4 clipPos, int eye) {
 
 inline float4 directScreenSpace(float4 localpos) {
     localpos.y = -localpos.y;
+    localpos.z = saturate((localpos.z - _ProjectionParams.y) / (_ProjectionParams.z - _ProjectionParams.y));
+    #if UNITY_REVERSED_Z
+        localpos.z = 1 - localpos.z;
+    #endif
     #ifdef USING_STEREO_MATRICES
         float4 left = proj2world(localpos, 0);
         float4 right = proj2world(localpos, 1);
         localpos = mul(unity_CameraProjection, mul(unity_WorldToCamera, (left + right) * 0.5));
-    #endif
-    localpos.z = saturate((localpos.z - _ProjectionParams.y) / (_ProjectionParams.z - _ProjectionParams.y));
-    #if UNITY_REVERSED_Z
-        localpos.z = 1 - localpos.z;
     #endif
     return localpos;
 }
