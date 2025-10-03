@@ -3,15 +3,11 @@
 #include "UnityCG.cginc"
 #include "UnityUI.cginc"
 
-#pragma multi_compile_local_vertex _ UNITY_UI_CLIP_RECT
-#pragma multi_compile_local_fragment _ UNITY_UI_CLIP_RECT
+#pragma multi_compile_local _ UNITY_UI_CLIP_RECT
 #pragma multi_compile_local_fragment _ UNITY_UI_ALPHACLIP
-#pragma shader_feature_local_vertex _ _MIRROR_FLIP _VRC_SUPPORT
-#pragma shader_feature_local_vertex _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
-#ifdef GEOM_SUPPORT
-#pragma shader_feature_local_geometry _ _MIRROR_FLIP _VRC_SUPPORT
-#pragma shader_feature_local_geometry _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
-#endif
+#pragma shader_feature_local _ _VRC_SUPPORT
+#pragma shader_feature_local _ _MIRROR_FLIP
+#pragma shader_feature_local _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
 
 #ifdef _MIRROR_FLIP
 #define _VRC_SUPPORT
@@ -111,7 +107,7 @@ v2f vert(appdata_t v, uint vertID : SV_VertexID) {
     float4 localpos = v.vertex;
     #ifdef _VRC_SUPPORT
         if (!isVisibleInVRC()) return OUT;
-        #if (defined(_BILLBOARD) && !defined(_MIRROR_FLIP)) || (!defined(_BILLBOARD) && defined(_MIRROR_FLIP))
+        #ifdef _MIRROR_FLIP
             if (isInVRCMirror()) localpos.x = -localpos.x;
         #endif
     #endif
