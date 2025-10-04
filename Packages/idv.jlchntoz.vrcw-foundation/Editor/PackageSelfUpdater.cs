@@ -93,8 +93,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
 #if !VPM_RESOLVER_INCLUDED
         static UniTask<(Semver release, Semver preRelease)> GetVersions(string listingsURL, string packageName) {
-            if (!versionCache.TryGetValue(listingsURL, out var task))
-                versionCache[listingsURL] = task = GetVersionsCore(listingsURL, packageName).Preserve();
+            if (!versionCache.TryGetValue(packageName, out var task))
+                versionCache[packageName] = task = GetVersionsCore(listingsURL, packageName).Preserve();
             return task;
         }
 
