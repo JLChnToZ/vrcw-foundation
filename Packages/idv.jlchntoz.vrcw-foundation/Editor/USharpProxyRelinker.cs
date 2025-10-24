@@ -38,6 +38,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 if (backing != null) Debug.Log($"Successfully restored UdonSharp backing UdonBehaviour for {usharp.name}", usharp);
                 else Debug.LogWarning($"Failed to restore UdonSharp backing UdonBehaviour for {usharp.name}", usharp);
                 EditorUtility.SetDirty(usharp);
+                so.ApplyModifiedPropertiesWithoutUndo();
                 PrefabUtility.RecordPrefabInstancePropertyModifications(usharp);
             }
         }
