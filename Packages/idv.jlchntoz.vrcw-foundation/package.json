@@ -1,7 +1,7 @@
 {
   "name": "idv.jlchntoz.vrcw-foundation",
   "displayName": "Vistanz's Foundation Package for VRChat Worlds",
-  "version": "0.0.40",
+  "version": "0.0.41",
   "unity": "2022.3",
   "description": "Foundation framework enhances VRChat World developments with Udon(sharp).",
   "vrchatVersion": "2022.1.1",
