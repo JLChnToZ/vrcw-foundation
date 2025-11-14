@@ -1,4 +1,8 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
+using UnityEngine;
 using UnityObject = UnityEngine.Object;
 
 namespace JLChnToZ.VRC.Foundation.Resolvers {
@@ -6,59 +10,71 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
         sealed class PropertyCommand : IResolverCommand {
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
             readonly string propertyName;
+            readonly Dictionary<Type, MemberInfo> memberCache = new Dictionary<Type, MemberInfo>();
+
+            static bool IsObjectValid(object obj) => obj != null && !(obj is UnityObject uobj && uobj == null);
 
             public PropertyCommand(string propertyName) {
                 this.propertyName = propertyName;
             }
 
+            object Resolve(object target) {
+                if (!IsObjectValid(target)) return null;
+                var type = target.GetType();
+                if (!memberCache.TryGetValue(type, out var member))
+                    memberCache[type] = member =
+                        type.GetField(propertyName, flags) as MemberInfo ??
+                        type.GetProperty(propertyName, flags);
+                foreach (var resolver in customResolvers)
+                    if (resolver(target, propertyName, member, out var result))
+                        return result;
+                if (member is FieldInfo field)
+                    return field.GetValue(target);
+                if (member is PropertyInfo property)
+                    return property.GetValue(target);
+                return null;
+            }
+
             public ICommandState CreateState() => new State();
 
             public void Reset(ICommandState state, object from) {
-                if (state is State s) {
-                    s.Reset(null);
-                    s.target = from;
-                    if (from != null && (s.member == null || !s.member.DeclaringType.IsInstanceOfType(from))) {
-                        var type = from.GetType();
-                        var field = type.GetField(propertyName, flags);
-                        if (field != null) {
-                            s.member = field;
-                            return;
-                        }
-                        var property = type.GetProperty(propertyName, flags);
-                        if (property != null) {
-                            s.member = property;
-                            return;
-                        }
-                    }
-                }
+                if (state is State s) s.Reset(from);
             }
 
             public void Next(ICommandState state) {
-                if (state is State s && s.Next()) {
-                    if (s.target == null) return;
-                    if (s.target is UnityObject unityObject && !unityObject) {
-                        s.current = null;
-                        s.flag = StateFlag.Ended;
-                    }
-                    foreach (var resolver in customResolvers)
-                        if (resolver(s.target, propertyName, s.member, out s.current))
-                            return;
-                    if (s.member is FieldInfo field) {
-                        s.current = field.GetValue(s.target);
-                        return;
-                    }
-                    if (s.member is PropertyInfo property) {
-                        s.current = property.GetValue(s.target);
-                        return;
-                    }
-                    s.current = null;
-                    s.flag = StateFlag.Ended;
-                }
+                if (state is State s) s.Next(this);
             }
 
-            sealed class State : SingleState {
-                public object target;
-                public MemberInfo member;
+            sealed class State : ICommandState {
+                object target;
+                object current;
+                IEnumerator enumerator;
+
+                public object Current => current;
+
+                public bool Giveup => !IsObjectValid(current) && enumerator == null;
+
+                public void Reset(object target) {
+                    this.target = target;
+                    current = null;
+                    enumerator = null;
+                }
+
+                public void Next(PropertyCommand cmd) {
+                    if (enumerator != null) {
+                        while (enumerator.MoveNext()) {
+                            current = enumerator.Current;
+                            if (IsObjectValid(current)) break;
+                        }
+                        return;
+                    }
+                    enumerator = null;
+                    if (IsObjectValid(target)) current = cmd.Resolve(target);
+                    else current = null;
+                    target = null;
+                    if (current is IEnumerable enumerable && !(current is string) && !(current is Transform))
+                        enumerator = enumerable.GetEnumerator();
+                }
             }
         }
     }

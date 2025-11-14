@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -38,13 +39,28 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         resolver.WithPath(attribute.Source);
                     hasAttribute = true;
                 }
-                if (hasAttribute)
-                    resolver.WithType(field.FieldType);
-                else
+                if (hasAttribute) {
+                    var fieldType = field.FieldType;
+                    if (fieldType.IsArray) fieldType = fieldType.GetElementType();
+                    resolver.WithType(fieldType);
+                } else
                     resolver = null;
                 resolveFields[field] = resolver;
             }
             return resolver;
+        }
+
+        static bool IsObjectSafeToAdd(object obj) {
+            if (obj is UnityObject uobj) {
+                if (uobj == null) return false;
+                if ((uobj.hideFlags & HideFlags.DontSave) != 0) return false;
+                if (uobj is GameObject go) {
+                    if (!go.scene.IsValid()) return false;
+                } else if (uobj is Component comp) {
+                    if (!comp.gameObject.scene.IsValid()) return false;
+                }
+            }
+            return true;
         }
 
         public override void OnPreprocess(Scene scene) {
@@ -64,7 +80,13 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 foreach (var field in GetFields<ResolveAttribute>(type)) {
                     try {
                         if (TryResolveUnchecked(field, entry, out var resolved) && !Equals(resolved, field.GetValue(entry))) {
-                            so.FindProperty(field.Name).SetBoxedValue(resolved);
+                            var prop = so.FindProperty(field.Name);
+                            if (prop.isArray && resolved is Array array) {
+                                prop.arraySize = array.Length;
+                                for (int i = 0; i < array.Length; i++)
+                                    prop.GetArrayElementAtIndex(i).SetBoxedValue(array.GetValue(i));
+                            } else
+                                prop.SetBoxedValue(resolved);
                             if (isAdaptor)
                                 udon.publicVariables.TrySetVariableValue(field.Name, resolved);
                             changed = true;
@@ -104,7 +126,27 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (resolver != null) {
                 if (resolvedObjects.TryGetValue((field, instance), out result)) return true;
                 resolvedObjects[(field, instance)] = null; // Circular reference protection.
-                if (resolver.TryResolve(instance, out result)) {
+                var fieldType = field.FieldType;
+                if (fieldType.IsArray) {
+                    var elementType = fieldType.GetElementType();
+                    var results = new List<object>();
+                    foreach (var obj in resolver.Resolve(instance)) {
+                        if (CastHelper.TryCast(obj, elementType, out var casted) && IsObjectSafeToAdd(casted)) {
+                            results.Add(casted);
+                            continue;
+                        }
+                        if (obj is IEnumerable enumerable)
+                            foreach (var item in enumerable)
+                                if (CastHelper.TryCast(item, elementType, out casted) && IsObjectSafeToAdd(casted))
+                                    results.Add(casted);
+                    }
+                    var array = Array.CreateInstance(elementType, results.Count);
+                    for (int i = 0; i < results.Count; i++)
+                        array.SetValue(results[i], i);
+                    resolvedObjects[(field, instance)] = result = array;
+                    return true;
+                }
+                if (resolver.TryResolve(instance, out result) && IsObjectSafeToAdd(result)) {
                     resolvedObjects[(field, instance)] = result;
                     return true;
                 }

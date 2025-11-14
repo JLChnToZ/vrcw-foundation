@@ -1,9 +1,10 @@
 #if UDON && !COMPILER_UDONSHARP
 using System.Reflection;
-using UnityEngine;
 using VRC.Udon;
 #if UNITY_EDITOR
 using UnityEditor;
+#else
+using UnityEngine;
 #endif
 
 namespace JLChnToZ.VRC.Foundation.Resolvers {

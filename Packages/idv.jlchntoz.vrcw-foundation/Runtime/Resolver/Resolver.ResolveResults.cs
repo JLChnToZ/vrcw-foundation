@@ -66,7 +66,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             readonly ICommandState[] states;
             readonly object from;
             readonly int count;
-            int index;
+            int depth;
 
             /// <summary>
             /// Get the yielded resolved object.
@@ -82,7 +82,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 states = ArrayPool<ICommandState>.Shared.Rent(count);
                 for (int i = 0; i < count; i++)
                     states[i] = resolver.commands[i].CreateState();
-                index = 0;
+                depth = 0;
                 Reset();
             }
 
@@ -91,15 +91,16 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             /// </summary>
             /// <returns><c>true</c> if the next object is resolved successfully, otherwise <c>false</c>.</returns>
             public bool MoveNext() {
-                while (index >= 0 && index < count) {
-                    var state = states[index];
-                    commands[index].Next(state);
-                    if (states[index].Giveup) {
-                        index--;
+                while (depth >= 0 && depth < count) {
+                    var state = states[depth];
+                    commands[depth].Next(state);
+                    if (states[depth].Giveup) {
+                        depth--;
                         continue;
                     }
-                    if (++index >= count) return true;
-                    commands[index].Reset(states[index], state.Current);
+                    if (depth >= count - 1) return true;
+                    depth++;
+                    commands[depth].Reset(states[depth], state.Current);
                 }
                 return false;
             }
@@ -108,7 +109,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             /// Reset the enumerator to the initial state.
             /// </summary>
             public void Reset() {
-                index = 0;
+                depth = 0;
                 if (commands.Length == 0) return;
                 commands[0].Reset(states[0], from);
             }
