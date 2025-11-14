@@ -64,7 +64,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         else if (result is Enum e)
                             EditorGUI.EnumPopup(position, prop.content, e);
                         else
-                            EditorGUI.LabelField(position, prop.content, result.ToString());
+                            EditorGUI.LabelField(position, prop.content, Utils.GetTempContent(result.ToString()));
                     }
                     return;
                 default:
@@ -85,7 +85,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         VisibilityState TryReolveProperty(SerializedProperty property, bool resultRequired, out object result) {
-            if (property == null || property.propertyType != SerializedPropertyType.ObjectReference) {
+            if (property == null || property.propertyType != SerializedPropertyType.ObjectReference || EditorApplication.isPlayingOrWillChangePlaymode) {
                 result = null;
                 return property == null ? VisibilityState.Hidden : VisibilityState.Visible;
             }
