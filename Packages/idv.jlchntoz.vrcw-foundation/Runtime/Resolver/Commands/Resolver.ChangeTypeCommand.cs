@@ -6,7 +6,6 @@ using UnityEngine;
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class ChangeTypeCommand : IResolverCommand {
-            const BindingFlags casterFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.InvokeMethod;
             static readonly List<Component> tempComponents = new List<Component>();
             public readonly Type type;
 
