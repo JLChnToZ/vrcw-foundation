@@ -169,12 +169,11 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         /// <param name="rect">The rect of the field.</param>
         /// <param name="content">The label of the field.</param>
         public static void DrawUrlField(SerializedProperty urlProperty, TrustedUrlTypes urlTypes, Rect rect, GUIContent content = null) {
-            if (content == null) content = Utils.GetTempContent(urlProperty.displayName, urlProperty.tooltip);
             if (urlProperty.propertyType == SerializedPropertyType.Generic) // VRCUrl
                 urlProperty = urlProperty.FindPropertyRelative("url");
             var url = urlProperty.stringValue;
-            using (new EditorGUI.PropertyScope(rect, content, urlProperty))
-                urlProperty.stringValue = DrawUrlField(url, urlTypes, rect, content);
+            using (var scope = new EditorGUI.PropertyScope(rect, content, urlProperty))
+                urlProperty.stringValue = DrawUrlField(url, urlTypes, rect, scope.content);
         }
 
         /// <summary>
