@@ -69,8 +69,7 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         return;
                     }
                     enumerator = null;
-                    if (IsObjectValid(target)) current = cmd.Resolve(target);
-                    else current = null;
+                    current = cmd.Resolve(target);
                     target = null;
                     if (current is IEnumerable enumerable && !(current is string) && !(current is Transform))
                         enumerator = enumerable.GetEnumerator();
