@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -5,30 +6,81 @@ using UnityEngine;
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class HierarchyChildCommand : IResolverCommand {
+            static readonly char[] globSpecialChars = new [] { '*', '?', '[', ']', '{', '}' };
             readonly string childName;
             readonly Regex childNameRegex;
 
             public HierarchyChildCommand(string childName) {
                 this.childName = childName;
-                if (childName.Contains("*")) {
-                    var splitted = childName.Split('*');
-                    var sb = new StringBuilder();
-                    bool asteriskAtStart = false, asteriskAtEnd = false;
-                    for (int i = 1; i < splitted.Length; i++) {
-                        if (string.IsNullOrEmpty(splitted[i])) {
-                            if (sb.Length == 0)
-                                asteriskAtStart = true;
-                            else if (i >= splitted.Length - 1)
-                                asteriskAtEnd = true;
-                            continue;
-                        }
-                        if (sb.Length > 0) sb.Append(".*");
-                        else if (!asteriskAtStart) sb.Append('^');
-                        sb.Append(Regex.Escape(splitted[i]));
+                if (childName.IndexOfAny(globSpecialChars) < 0) return;
+                var pattern = new StringBuilder(childName.Length);
+                pattern.Append('^');
+                bool bracketOpen = false;
+                int braceDepth = 0;
+                for (int i = 0; i < childName.Length; i++) {
+                    char c = childName[i];
+                    switch (c) {
+                        case '*':
+                            if (bracketOpen) goto case '\\';
+                            pattern.Append(".*");
+                            break;
+                        case '?':
+                            if (bracketOpen) goto case '\\';
+                            pattern.Append('.');
+                            break;
+                        case '[':
+                            if (bracketOpen) goto case '\\';
+                            bracketOpen = true;
+                            goto default;
+                        case ']':
+                            if (bracketOpen && i < childName.Length - 1 && childName[i + 1] == ']') // []]
+                                goto case '\\';
+                            bracketOpen = false;
+                            goto default;
+                        case '!':
+                        case '^':
+                            if (!bracketOpen || i == 0 || childName[i - 1] != '[') {
+                                if (c == '^') goto case '\\';
+                                goto default;
+                            }
+                            pattern.Append('^');
+                            break;
+                        case '{':
+                            if (bracketOpen) goto case '\\';
+                            pattern.Append("(?:");
+                            braceDepth++;
+                            break;
+                        case '}':
+                            if (braceDepth <= 0 || bracketOpen) goto default;
+                            pattern.Append(')');
+                            braceDepth--;
+                            break;
+                        case ',':
+                            if (braceDepth <= 0) goto default;
+                            pattern.Append('|');
+                            break;
+                        case '\\':
+                        case '+':
+                        case '|':
+                        case '(':
+                        case ')':
+                        case '$':
+                        case '.':
+                        case '#':
+                        case ' ':
+                            pattern.Append('\\');
+                            goto default;
+                        default:
+                            pattern.Append(c);
+                            break;
                     }
-                    if (!asteriskAtEnd) sb.Append('$');
-                    childNameRegex = new Regex(sb.ToString(), RegexOptions.Compiled);
                 }
+                if (braceDepth > 0)
+                    throw new ArgumentException("Unclosed brace in glob pattern.", nameof(childName));
+                if (bracketOpen)
+                    throw new ArgumentException("Unclosed bracket in glob pattern.", nameof(childName));
+                pattern.Append('$');
+                childNameRegex = new Regex(pattern.ToString(), RegexOptions.Compiled);
             }
 
             public ICommandState CreateState() => new State();
