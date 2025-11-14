@@ -18,7 +18,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                             if (property.propertyType == SerializedPropertyType.ObjectReference)
                                 EditorGUI.ObjectField(position, prop.content, null, typeof(UnityObject), true);
                             else
-                                EditorGUI.LabelField(position, prop.content, "null");
+                                EditorGUI.LabelField(position, prop.content, Utils.GetTempContent("null"));
                         } else if (result is UnityObject unityObj)
                             EditorGUI.ObjectField(position, prop.content, unityObj, typeof(UnityObject), true);
                         else if (result is Vector2 v2)
