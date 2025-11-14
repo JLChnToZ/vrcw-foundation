@@ -21,7 +21,8 @@ namespace JLChnToZ.VRC.Foundation.I18N {
     public partial class LanguageManager : UdonSharpEventSender {
         [SerializeField, LocalizedLabel] TextAsset[] languageJsonFiles;
         [SerializeField, Multiline, LocalizedLabel] string languageJson;
-        DataDictionary languages, currentLanguage;
+        [SerializeField, HideInInspector] DataDictionary languages;
+        DataDictionary currentLanguage;
 
         [FieldChangeCallback(nameof(LanguageKey))]
         string languageKey = "EN";
@@ -49,24 +50,20 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         void OnEnable() {
             if (afterFirstRun) return;
             afterFirstRun = true;
-            if (VRCJson.TryDeserializeFromJson(languageJson, out DataToken rawLanguages) && rawLanguages.TokenType == TokenType.DataDictionary) {
-                languages = rawLanguages.DataDictionary;
-                languageKeys = new string[languages.Count];
-                languageNames = new string[languages.Count];
-                var keys = languages.GetKeys();
-                for (int i = 0, count = keys.Count; i < count; i++) {
-                    var currentLanguageKey = keys[i].String;
-                    languageKeys[i] = keys[i].String;
-                    if (languages.TryGetValue(currentLanguageKey, TokenType.DataDictionary, out DataToken token) &&
-                        token.DataDictionary.TryGetValue("_name", TokenType.String, out token)) {
-                        languageNames[i] = token.String;
-                        continue;
-                    }
-                    languageNames[i] = currentLanguageKey;
+            languageKeys = new string[languages.Count];
+            languageNames = new string[languages.Count];
+            var keys = languages.GetKeys();
+            for (int i = 0, count = keys.Count; i < count; i++) {
+                var currentLanguageKey = keys[i].String;
+                languageKeys[i] = keys[i].String;
+                if (languages.TryGetValue(currentLanguageKey, TokenType.DataDictionary, out DataToken token) &&
+                    token.DataDictionary.TryGetValue("_name", TokenType.String, out token)) {
+                    languageNames[i] = token.String;
+                    continue;
                 }
-                DetectLanguage(VRCPlayerApi.GetCurrentLanguage());
-            } else
-                Debug.LogError("Failed to parse language json.");
+                languageNames[i] = currentLanguageKey;
+            }
+            DetectLanguage(VRCPlayerApi.GetCurrentLanguage());
         }
 
         void DetectLanguage(string uiLanguage) {
@@ -166,7 +163,32 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             var allLanguageKeys = new HashSet<string>();
             foreach (var json in jsonTexts)
                 ParseFromJson(json, keyStack, defaultLanguageMapping, allLanguageKeys, langMap);
-            languageJson = WriteToJson(langMap, defaultLanguageMapping);
+            languages = new DataDictionary();
+            foreach (var kv in langMap) {
+                var langDict = new DataDictionary();
+                var lang = kv.Value;
+                if (!string.IsNullOrEmpty(lang.name)) langDict["_name"] = lang.name;
+                if (!string.IsNullOrEmpty(lang.vrcName)) langDict["_vrclang"] = lang.vrcName;
+                switch (lang.timezones.Count) {
+                    case 0: break;
+                    case 1:
+                        langDict["_timezone"] = lang.timezones[0];
+                        break;
+                    default:
+                        var timezoneList = new DataList();
+                        foreach (var timezone in lang.timezones) timezoneList.Add(timezone);
+                        langDict["_timezone"] = timezoneList;
+                        break;
+                }
+                foreach (var langEntry in lang.languages)
+                    langDict[langEntry.Key] = langEntry.Value;
+                if (defaultLanguageMapping != null)
+                    foreach (var defaultLang in defaultLanguageMapping)
+                        if (!langDict.ContainsKey(defaultLang.Key))
+                            langDict[defaultLang.Key] = defaultLang.Value;
+                languages[kv.Key] = langDict;
+            }
+            languageJson = "";
             languageJsonFiles = new TextAsset[0];
         }
 
