@@ -34,7 +34,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             }
             afterFirstRun = true;
             entryTemplate.SetActive(false);
-            if (!Utilities.IsValid(parent)) parent = transform as RectTransform;
+            if (!Utilities.IsValid(parent)) parent = (RectTransform)transform;
             SendCustomEventDelayedFrames(nameof(_DetectLanguageInit), 0);
         }
 
