@@ -43,7 +43,7 @@ Material:
     - _MSDF: 1
     - _MirrorFlip: 0
     - _OverrideMSDF: 0
-    - _PixelRange: 50
+    - _PixelRange: 4
     - _RenderMode: 4095
     - _SDFThreshold: 0.5
     - _ScreenSpaceOverlay: 0
