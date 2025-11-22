@@ -28,16 +28,18 @@
 
         [Header(Render Pipeline Settings)]
         [Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0
-        [Space]
+        [Enum(UnityEngine.Rendering.CullMode)] _CullMode ("Cull Mode", Int) = 2
+        [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
+
+        [Header(Stencil Settings)]
         [Enum(UnityEngine.Rendering.CompareFunction)] _StencilComp ("Comparison Mode", Int) = 8
         [IntRange] _Stencil ("ID", Range(0, 255)) = 0
         [Enum(UnityEngine.Rendering.StencilOp)] _StencilOp ("Operation", Int) = 0
         [IntRange] _StencilWriteMask ("Write Mask", Range(0, 255)) = 255
         [IntRange] _StencilReadMask ("Read Mask", Range(0, 255)) = 255
-        [Space]
+
+        [Header(Depth Settings)]
         [Enum(UnityEngine.Rendering.CompareFunction)] unity_GUIZTestMode("Z Test Mode", Int) = 4
-        [Enum(UnityEngine.Rendering.CullMode)] _CullMode ("Cull Mode", Int) = 2
-        [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
         [Toggle(_)] _ZWrite ("Z Write", Int) = 0
     }
 

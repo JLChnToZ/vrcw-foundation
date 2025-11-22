@@ -3,11 +3,13 @@
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Color Tint", Color) = (1,1,1,1)
 
-        [Header(MSDF Settings)]
+        [Header(SDF Settings)]
+        [Toggle(SDF)] _UseSDF ("Input is SDF", Float) = 0
         [Toggle(MSDF)] _UseMSDF ("Input is MSDF", Float) = 0
         [Toggle(MSDF_OVERRIDE)] _OverrideMSDF ("Use Override Texture", Float) = 0
         [NoScaleOffset] _MSDFTex ("Override Texture", 2D) = "black" {}
-		_PixelRange ("MSDF Pixel Range", Float) = 4.0
+		_PixelRange ("Pixel Range", Float) = 4.0
+        _SDFThreshold ("Threshold", Range(0, 1)) = 0.5
 
         [Header(Conditional Appearance in VRChat Camera Mirror)]
         [Toggle(_VRC_SUPPORT)] _VRCSupport ("Enable", Int) = 0
@@ -26,16 +28,18 @@
 
         [Header(Render Pipeline Settings)]
         [Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0
-        [Space]
+        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Int) = 2
+        [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
+
+        [Header(Stencil Settings)]
         [Enum(UnityEngine.Rendering.CompareFunction)] _StencilComp ("Comparison Mode", Int) = 8
         [IntRange] _Stencil ("ID", Range(0, 255)) = 0
         [Enum(UnityEngine.Rendering.StencilOp)] _StencilOp ("Operation", Int) = 0
         [IntRange] _StencilWriteMask ("Write Mask", Range(0, 255)) = 255
         [IntRange] _StencilReadMask ("Read Mask", Range(0, 255)) = 255
-        [Space]
+
+        [Header(Depth Settings)]
         [Enum(UnityEngine.Rendering.CompareFunction)] unity_GUIZTestMode("Z Test Mode", Int) = 4
-        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Int) = 2
-        [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
         [Toggle(_)] _ZWrite ("Z Write", Int) = 0
     }
 
@@ -73,7 +77,8 @@
             #pragma target 4.0
             // Exclude renderers incompatible with the geometry stage when writing to screen
             #pragma exclude_renderers gles gles3 glcore metal
-            #pragma shader_feature_local_fragment __ MSDF MSDF_OVERRIDE
+            #pragma shader_feature_local_fragment __ SDF MSDF
+            #pragma shader_feature_local_fragment __ MSDF_OVERRIDE
             #define GEOM_SUPPORT
             #include "./UI-Modified.cginc"
             ENDCG
@@ -111,7 +116,8 @@
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.5
-            #pragma shader_feature_local_fragment __ MSDF MSDF_OVERRIDE
+            #pragma shader_feature_local_fragment __ SDF MSDF
+            #pragma shader_feature_local_fragment __ MSDF_OVERRIDE
             #include "./UI-Modified.cginc"
             ENDCG
         }

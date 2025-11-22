@@ -18,9 +18,6 @@
 #endif
 #include "Utils.cginc"
 
-#ifdef MSDF_OVERRIDE
-#define MSDF 2
-#endif
 #ifndef GEOM_SUPPORT
 #undef _DOUBLE_SIDED
 #endif
@@ -82,7 +79,8 @@ float4 _MainTex_ST;
 #if UNITY_UI_CLIP_RECT
     float4 _ClipRect;
 #endif
-#if MSDF
+#if SDF || MSDF
+    float _SDFThreshold;
     float _PixelRange;
 #endif
 
@@ -225,18 +223,21 @@ half4 frag(
         float2 ddyuv = ddy(texcoord).yx;
         ddyuv.x = -ddyuv.x;
         color *= saturate((d - IN.texcoord.z) * rsqrt(abs(dot(ddxuv, ddyuv))) * IN.texcoord.w + 0.5);
-    #elif MSDF
+    #elif SDF || MSDF
     #ifdef MSDF_OVERRIDE
-        float2 msdfUnit = _PixelRange * _MSDFTex_TexelSize.xy;
+        float2 sdfUnit = _PixelRange * _MSDFTex_TexelSize.xy;
         float4 sampleCol = tex2D(_MSDFTex, texcoord);
     #else
-        float2 msdfUnit = _PixelRange * _MainTex_TexelSize.xy;
+        float2 sdfUnit = _PixelRange * _MainTex_TexelSize.xy;
         float4 sampleCol = tex2D(_MainTex, texcoord);
     #endif
-        float sigDist = median(sampleCol.xyz) - 0.5;
-        sigDist *= max(dot(msdfUnit, 0.5 / fwidth(texcoord)), 1); // Max to handle fading out to quads in the distance
-        float opacity = saturate(sigDist + 0.5);
-        color *= float4(1, 1, 1, opacity) + _TextureSampleAdd;
+    #if MSDF
+        float sigDist = median(sampleCol.xyz);
+    #else
+        float sigDist = sampleCol.w;
+    #endif
+        float threshold = min(_SDFThreshold, 0.999999);
+        color *= float4(1, 1, 1, saturate((sigDist - threshold) * max(dot(sdfUnit, 0.5 / fwidth(texcoord)), 1) + threshold)) + _TextureSampleAdd;
     #else
         color *= tex2D(_MainTex, texcoord) + _TextureSampleAdd;
     #endif
