@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Reflection;
@@ -18,10 +19,27 @@ using UnityObject = UnityEngine.Object;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class BindEventPreprocessor : UdonSharpPreProcessor {
+        static readonly FieldInfo persistentCallsField;
+        static readonly MethodInfo callsMethod;
+        static readonly PropertyInfo targetProperty, methodNameProperty, modeProperty, argumentsProperty, stringArgumentProperty;
         static readonly Regex regexCompositeFormat = new Regex(@"\{(\d+)[,:]?[^\}]*\}", RegexOptions.Compiled);
         static readonly Dictionary<string, string> typeNameMapping = new Dictionary<string, string>();
         static readonly Dictionary<BindEventAttribute, Resolver> resolverCache = new Dictionary<BindEventAttribute, Resolver>();
         static bool hasTypeNameMappingInit;
+
+        static BindEventPreprocessor() {
+            const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            persistentCallsField = typeof(UnityEventBase).GetField("m_PersistentCalls", bindingFlags);
+            var persistentCallGroupType = persistentCallsField.FieldType;
+            callsMethod = persistentCallGroupType.GetMethod("GetListeners", bindingFlags);
+            var persistantCallType = callsMethod.ReturnType.GetGenericArguments()[0];
+            targetProperty = persistantCallType.GetProperty("target", bindingFlags);
+            methodNameProperty = persistantCallType.GetProperty("methodName", bindingFlags);
+            modeProperty = persistantCallType.GetProperty("mode", bindingFlags);
+            argumentsProperty = persistantCallType.GetProperty("arguments", bindingFlags);
+            var argumentCacheType = argumentsProperty.PropertyType;
+            stringArgumentProperty = argumentCacheType.GetProperty("stringArgument", bindingFlags);
+        }
 
         protected override void ProcessEntry(Type type, MonoBehaviour entry, UdonBehaviour udon) {
             UnityAction<string> call = udon.SendCustomEvent;
@@ -70,19 +88,25 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 resolver.WithType<UnityEventBase>();
                 resolverCache[attribute] = resolver;
             }
-            if (resolver.TryResolve(targetObj, out var otherObj) && otherObj is UnityEventBase callback) {
-                var targetEventName = string.Format(attribute.Destination, index, targetObj.name);
-                if (!hasTypeNameMappingInit) {
-                    foreach (var def in UdonEditorManager.Instance.GetNodeDefinitions()) {
-                        if (!def.fullName.StartsWith("Event_")) continue;
-                        typeNameMapping[def.fullName.Substring(6)] = $"_{char.ToLower(def.fullName[6])}{def.fullName.Substring(7)}";
-                    }
-                    hasTypeNameMappingInit = true;
+            if (!resolver.TryResolve(targetObj, out var otherObj) || !(otherObj is UnityEventBase callback))
+                return;
+            var targetEventName = string.Format(attribute.Destination, index, targetObj.name);
+            if (!hasTypeNameMappingInit) {
+                foreach (var def in UdonEditorManager.Instance.GetNodeDefinitions()) {
+                    if (!def.fullName.StartsWith("Event_")) continue;
+                    typeNameMapping[def.fullName.Substring(6)] = $"_{char.ToLower(def.fullName[6])}{def.fullName.Substring(7)}";
                 }
-                if (typeNameMapping.TryGetValue(targetEventName, out var mappedEventName))
-                    targetEventName = mappedEventName;
-                UnityEventTools.AddStringPersistentListener(callback, call, targetEventName);
+                hasTypeNameMappingInit = true;
             }
+            if (typeNameMapping.TryGetValue(targetEventName, out var mappedEventName))
+                targetEventName = mappedEventName;
+            foreach (var persistentCall in callsMethod.Invoke(persistentCallsField.GetValue(callback), Array.Empty<object>()) as IEnumerable)
+                if (targetProperty.GetValue(persistentCall) == call.Target &&
+                    (string)methodNameProperty.GetValue(persistentCall) == call.Method.Name &&
+                    (PersistentListenerMode)modeProperty.GetValue(persistentCall) == PersistentListenerMode.String &&
+                    (string)stringArgumentProperty.GetValue(argumentsProperty.GetValue(persistentCall)) == targetEventName)
+                    return;
+            UnityEventTools.AddStringPersistentListener(callback, call, targetEventName);
         }
 
         [DidReloadScripts]
