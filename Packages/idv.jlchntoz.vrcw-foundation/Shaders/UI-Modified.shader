@@ -124,4 +124,5 @@
     }
 
     Fallback "UI/Default"
+    CustomEditor "JLChnToZ.VRCW.Foundation.Editor.UIModifiedInspector"
 }

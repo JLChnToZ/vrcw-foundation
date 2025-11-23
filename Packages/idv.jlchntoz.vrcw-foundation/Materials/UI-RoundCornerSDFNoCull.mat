@@ -27,6 +27,6 @@ Material:
     m_Ints: []
     m_Floats:
     - _PixelRange: 50
-    - _SDFThreshold: 1
+    - _SDFThreshold: 0.95
     m_Colors: []
   m_BuildTextureStacks: []
