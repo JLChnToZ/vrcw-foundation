@@ -122,7 +122,7 @@
         }
     }
 
-    Fallback "UI/Default"
+    Fallback "TextMeshPro/Mobile/Distance Field"
 
     CustomEditor "JLChnToZ.VRCW.Foundation.Editor.UIModifiedInspector"
 }

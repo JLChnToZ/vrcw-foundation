@@ -1,4 +1,4 @@
-# VRCW Foundation
+# Vistanz's Foundation Package for VRChat Worlds (aka. VRCW Foundation)
 
 This package is a foundation framework package for creating VRChat worlds with Udon(sharp). It contains several utilities and pipeline extensions that extends functionality on Udon(Sharp) and VRChat World SDK.
 
