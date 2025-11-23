@@ -9,7 +9,7 @@
 #pragma shader_feature_local _ _MIRROR_FLIP
 #pragma shader_feature_local _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
 
-#ifdef _MIRROR_FLIP
+#if defined(_MIRROR_FLIP) && !defined(_VRC_SUPPORT)
 #define _VRC_SUPPORT
 #endif
 
