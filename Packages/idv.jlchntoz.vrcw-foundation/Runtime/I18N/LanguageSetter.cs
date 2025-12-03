@@ -116,7 +116,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             }
         }
 
-#if COMPILER_UDONSHARP && UNITY_EDITOR
+#if COMPILER_UDONSHARP
         public
 #endif
         void _OnDropdownButtonClick() {
@@ -132,7 +132,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         }
     }
 
-#if !COMPILER_UDONSHARP
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
     partial class LanguageSetter : ISelfPreProcess {
         public int Priority => -1;
 
