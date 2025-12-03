@@ -140,6 +140,8 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             if (dropdownButton == null) return;
             var canvas = GetComponentInParent<Canvas>(true);
             if (canvas != null) dropdownParent = canvas.transform as RectTransform;
+            if (scrollRect == null) return;
+            if (scrollRectObject == null) scrollRectObject = scrollRect.gameObject;
             if (!scrollRectObject.TryGetComponent(out LayoutElement le))
                 le = scrollRectObject.AddComponent<LayoutElement>();
             le.ignoreLayout = true;

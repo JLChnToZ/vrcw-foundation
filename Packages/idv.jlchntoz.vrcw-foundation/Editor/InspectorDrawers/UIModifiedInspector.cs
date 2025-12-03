@@ -85,13 +85,15 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
                 sdfMode = 1;
             else if (IsPropertyOn(useMsdf))
                 sdfMode = 2;
-            sdfModes[0] = locale["UIModified.SDFMode.NonSDF"] ?? "";
-            sdfModes[1] = locale["UIModified.SDFMode.SDF"] ?? "";
-            sdfModes[2] = locale["UIModified.SDFMode.MSDF"] ?? "";
-            int newSdfMode = EditorGUILayout.Popup(locale.GetLocalizedContent("UIModified.TextureType"), sdfMode, sdfModes);
-            if (newSdfMode != sdfMode) {
-                if (useSdf != null) useSdf.floatValue = (newSdfMode == 1) ? 1f : 0f;
-                if (useMsdf != null) useMsdf.floatValue = (newSdfMode == 2) ? 1f : 0f;
+            using (var check = new EditorGUI.ChangeCheckScope()) {
+                sdfModes[0] = locale["UIModified.SDFMode.NonSDF"] ?? "";
+                sdfModes[1] = locale["UIModified.SDFMode.SDF"] ?? "";
+                sdfModes[2] = locale["UIModified.SDFMode.MSDF"] ?? "";
+                sdfMode = EditorGUILayout.Popup(locale.GetLocalizedContent("UIModified.TextureType"), sdfMode, sdfModes);
+                if (check.changed) {
+                    if (useSdf != null) useSdf.floatValue = (sdfMode == 1) ? 1f : 0f;
+                    if (useMsdf != null) useMsdf.floatValue = (sdfMode == 2) ? 1f : 0f;
+                }
             }
             if (sdfMode != 0) {
                 var overrideMsdf = FindProperty("_OverrideMSDF");

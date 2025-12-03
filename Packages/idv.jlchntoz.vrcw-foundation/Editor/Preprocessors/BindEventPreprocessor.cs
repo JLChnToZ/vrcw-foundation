@@ -16,6 +16,8 @@ using UdonSharp;
 using JLChnToZ.VRC.Foundation.Resolvers;
 
 using UnityObject = UnityEngine.Object;
+using UdonSharpEditor;
+using VRC.Udon.Common.Interfaces;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal sealed class BindEventPreprocessor : UdonSharpPreProcessor {
@@ -91,15 +93,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (!resolver.TryResolve(targetObj, out var otherObj) || !(otherObj is UnityEventBase callback))
                 return;
             var targetEventName = string.Format(attribute.Destination, index, targetObj.name);
-            if (!hasTypeNameMappingInit) {
-                foreach (var def in UdonEditorManager.Instance.GetNodeDefinitions()) {
-                    if (!def.fullName.StartsWith("Event_")) continue;
-                    typeNameMapping[def.fullName.Substring(6)] = $"_{char.ToLower(def.fullName[6])}{def.fullName.Substring(7)}";
-                }
-                hasTypeNameMappingInit = true;
-            }
-            if (typeNameMapping.TryGetValue(targetEventName, out var mappedEventName))
-                targetEventName = mappedEventName;
+            targetEventName = GetMappedName(targetEventName);
             foreach (var persistentCall in callsMethod.Invoke(persistentCallsField.GetValue(callback), Array.Empty<object>()) as IEnumerable)
                 if (targetProperty.GetValue(persistentCall) == call.Target &&
                     (string)methodNameProperty.GetValue(persistentCall) == call.Method.Name &&
@@ -107,6 +101,17 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     (string)stringArgumentProperty.GetValue(argumentsProperty.GetValue(persistentCall)) == targetEventName)
                     return;
             UnityEventTools.AddStringPersistentListener(callback, call, targetEventName);
+        }
+
+        static string GetMappedName(string eventName) {
+            if (!hasTypeNameMappingInit) {
+                foreach (var def in UdonEditorManager.Instance.GetNodeDefinitions()) {
+                    if (!def.fullName.StartsWith("Event_")) continue;
+                    typeNameMapping[def.fullName.Substring(6)] = $"_{char.ToLower(def.fullName[6])}{def.fullName.Substring(7)}";
+                }
+                hasTypeNameMappingInit = true;
+            }
+            return typeNameMapping.TryGetValue(eventName, out var mappedName) ? mappedName : eventName;
         }
 
         [DidReloadScripts]
@@ -164,16 +169,32 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             }
             var regex = regexCompositeFormat.IsMatch(destName) ? new Regex(regexCompositeFormat.Replace(destName, ReplaceRegex), RegexOptions.Compiled) : null;
             bool hasAnyMatch = false;
+            bool hasTryRetreveProgram = false;
+            IUdonSymbolTable entryPoints = null;
             foreach (var member in type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy))
                 if (regex != null ? regex.IsMatch(member.Name) : destName == member.Name) {
                     hasAnyMatch = true;
                     if (member.GetParameters().Length > 0)
                         Debug.LogWarning($"{messagePrefix} Destination {member.Name} has parameters, which still can be called, but will cause unexpected behavior.", currentScript);
-                    if (!member.IsPublic)
-                        Debug.LogError($"{messagePrefix} Destination {member.Name} is not public, which cannot be called from outside.", currentScript);
+                    var exposed = true;
+                    if (!member.IsPublic) {
+                        if (!hasTryRetreveProgram) {
+                            hasTryRetreveProgram = true;
+                            var asset = UdonSharpEditorUtility.GetUdonSharpProgramAsset(type);
+                            if (asset != null) {
+                                var program = asset.GetRealProgram();
+                                if (program != null) {
+                                    entryPoints = program.EntryPoints;
+                                }
+                            }
+                        }
+                        exposed = entryPoints == null || entryPoints.HasExportedSymbol(GetMappedName(member.Name));
+                    }
+                    if (!exposed)
+                        Debug.LogWarning($"{messagePrefix} Destination {member.Name} is not public, which cannot be called from outside.", currentScript);
                 }
             if (!hasAnyMatch)
-                Debug.LogError($"{messagePrefix} None of destination methods matches {destName}.", currentScript);
+                Debug.LogWarning($"{messagePrefix} None of destination methods matches {destName}.", currentScript);
             else if (!destName.StartsWith("_"))
                 Debug.LogWarning($"{messagePrefix} Destination {destName} does not start with underscore, which can be called over network RPC.\nIf this is intentional, you may safely ignore this warning.", currentScript);
         }
