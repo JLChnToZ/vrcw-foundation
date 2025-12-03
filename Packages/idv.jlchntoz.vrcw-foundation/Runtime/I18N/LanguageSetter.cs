@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using VRC.SDKBase;
+using System.Runtime.InteropServices;
 
 namespace JLChnToZ.VRC.Foundation.I18N {
     /// <summary>
@@ -16,11 +17,15 @@ namespace JLChnToZ.VRC.Foundation.I18N {
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
     [AddComponentMenu("JLChnToZ VRCW Foundation/Locales/Language Setter")]
     [DefaultExecutionOrder(1)]
-    public class LanguageSetter : UdonSharpBehaviour {
+    public partial class LanguageSetter : UdonSharpBehaviour {
         [SerializeField, HideInInspector, BindUdonSharpEvent] LanguageManager manager;
         [SerializeField, BindEvent(typeof(Toggle), nameof(Toggle.onValueChanged), nameof(_OnToggleClick))] GameObject entryTemplate;
         [SerializeField, Resolve(nameof(scrollRect) + "." + nameof(ScrollRect.content))] RectTransform parent;
         [SerializeField] ScrollRect scrollRect;
+        [SerializeField, HideInInspector, Resolve(nameof(scrollRect))] GameObject scrollRectObject;
+        [SerializeField, HideInInspector, Resolve(nameof(scrollRect))] Transform scrollRectTransform;
+        [SerializeField, BindEvent(nameof(Button.onClick), nameof(_OnDropdownButtonClick))] Button dropdownButton;
+        [SerializeField, HideInInspector] RectTransform dropdownParent;
         Toggle[] spawnedEntries;
         RectTransform[] spawnedEntryRects;
         bool hasInit = false;
@@ -29,7 +34,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
 
         void OnEnable() {
             if (afterFirstRun) {
-                Scroll();
+                if (!Utilities.IsValid(dropdownButton)) _Scroll();
                 return;
             }
             afterFirstRun = true;
@@ -74,20 +79,27 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             index = Array.IndexOf(manager.LanguageKeys, manager.LanguageKey);
             for (int i = 0; i < spawnedEntries.Length; i++)
                 spawnedEntries[i].SetIsOnWithoutNotify(i == index);
-            Scroll();
+            if (!Utilities.IsValid(dropdownButton) || !Utilities.IsValid(scrollRectObject)) {
+                _Scroll();
+                return;
+            }
+            scrollRectObject.SetActive(false);
+            if (Utilities.IsValid(dropdownParent)) scrollRectTransform.SetParent(transform, true);
         }
 
-        void Scroll() {
+#if COMPILER_UDONSHARP
+        public
+#endif
+        void _Scroll() {
             if (!Utilities.IsValid(scrollRect)) return;
             var rectTransform = spawnedEntryRects[index];
             if (!Utilities.IsValid(rectTransform)) return;
             var viewPort = scrollRect.viewport;
             if (!Utilities.IsValid(viewPort)) return;
-            var orgNormalizedPosition = scrollRect.normalizedPosition;
-            var vpSize = viewPort.rect.size;
-            var normalizedPosition = (rectTransform.anchoredPosition + (rectTransform.pivot - new Vector2(0.5f, 0.5f)) * rectTransform.rect.size - vpSize * 0.5f) / (parent.rect.size - vpSize);
-            if (!scrollRect.horizontal) normalizedPosition.x = orgNormalizedPosition.x;
-            if (!scrollRect.vertical) normalizedPosition.y = orgNormalizedPosition.y;
+            var normalizedPosition = scrollRect.normalizedPosition;
+            var pos = Rect.PointToNormalized(parent.rect, rectTransform.rect.center + (Vector2)rectTransform.localPosition);
+            if (scrollRect.horizontal) normalizedPosition.x = pos.x;
+            if (scrollRect.vertical) normalizedPosition.y = pos.y;
             scrollRect.normalizedPosition = normalizedPosition;
         }
 
@@ -103,5 +115,35 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                 }
             }
         }
+
+#if COMPILER_UDONSHARP && UNITY_EDITOR
+        public
+#endif
+        void _OnDropdownButtonClick() {
+            if (!Utilities.IsValid(scrollRectObject)) return;
+            if (scrollRectObject.activeSelf) {
+                if (Utilities.IsValid(dropdownParent)) scrollRectTransform.SetParent(transform, true);
+                scrollRectObject.SetActive(false);
+                return;
+            }
+            if (Utilities.IsValid(dropdownParent)) scrollRectTransform.SetParent(dropdownParent, true);
+            scrollRectObject.SetActive(true);
+            SendCustomEventDelayedFrames(nameof(_Scroll), 3);
+        }
     }
+
+#if !COMPILER_UDONSHARP
+    partial class LanguageSetter : ISelfPreProcess {
+        public int Priority => -1;
+
+        public void PreProcess() {
+            if (dropdownButton == null) return;
+            var canvas = GetComponentInParent<Canvas>(true);
+            if (canvas != null) dropdownParent = canvas.transform as RectTransform;
+            if (!scrollRectObject.TryGetComponent(out LayoutElement le))
+                le = scrollRectObject.AddComponent<LayoutElement>();
+            le.ignoreLayout = true;
+        }
+    }
+#endif
 }
