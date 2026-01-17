@@ -71,15 +71,17 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         }
 
         void DetectLanguage(string uiLanguage) {
-            if (!string.IsNullOrEmpty(savedLanguageKey) &&
-                PlayerData.TryGetString(Networking.LocalPlayer, savedLanguageKey, out var savedLang))
-                uiLanguage = savedLang;
-            if (requestedUILanguage == uiLanguage) return;
-            requestedUILanguage = uiLanguage;
+            if (string.IsNullOrEmpty(savedLanguageKey) ||
+                !PlayerData.TryGetString(Networking.LocalPlayer, savedLanguageKey, out var savedLanguage))
+                savedLanguage = "";
             var localTimeZone = TimeZoneInfo.Local.Id;
             int hasMatchingLanguage = 0;
             for (int i = 0, count = languageKeys.Length; i < count; i++) {
                 var currentLanguageKey = languageKeys[i];
+                if (currentLanguageKey == savedLanguage) {
+                    languageKey = currentLanguageKey;
+                    break;
+                }
                 if (!languages.TryGetValue(currentLanguageKey, TokenType.DataDictionary, out DataToken language))
                     continue;
                 if (hasMatchingLanguage < 2 && language.DataDictionary.TryGetValue("_vrclang", out DataToken langToken)) {
@@ -88,12 +90,14 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                             if (langToken.String == uiLanguage) {
                                 languageKey = currentLanguageKey;
                                 hasMatchingLanguage = 2;
+                                continue;
                             }
                             break;
                         case TokenType.DataList:
                             if (langToken.DataList.Contains(uiLanguage)) {
                                 languageKey = currentLanguageKey;
                                 hasMatchingLanguage = 2;
+                                continue;
                             }
                             break;
                     }
@@ -104,16 +108,20 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                             if (timezoneToken.String == localTimeZone) {
                                 languageKey = currentLanguageKey;
                                 hasMatchingLanguage = 1;
+                                continue;
                             }
                             break;
                         case TokenType.DataList:
                             if (timezoneToken.DataList.Contains(localTimeZone)) {
                                 languageKey = currentLanguageKey;
                                 hasMatchingLanguage = 1;
+                                continue;
                             }
                             break;
                     }
             }
+            if (requestedUILanguage == languageKey) return;
+            requestedUILanguage = languageKey;
             ChangeLanguage();
         }
 
