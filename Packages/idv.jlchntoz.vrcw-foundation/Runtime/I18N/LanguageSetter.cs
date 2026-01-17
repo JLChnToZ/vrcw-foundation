@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using VRC.SDKBase;
-using System.Runtime.InteropServices;
 
 namespace JLChnToZ.VRC.Foundation.I18N {
     /// <summary>
