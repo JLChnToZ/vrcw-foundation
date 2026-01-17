@@ -6,7 +6,7 @@
   "description": "Foundation framework enhances VRChat World developments with Udon(sharp).",
   "vrchatVersion": "2022.1.1",
   "vpmDependencies": {
-    "com.vrchat.worlds": "3.x.x"
+    "com.vrchat.worlds": "3.x.x >=3.9.0"
   },
   "author": {
     "name": "Jeremy Lam aka. Vistanz",

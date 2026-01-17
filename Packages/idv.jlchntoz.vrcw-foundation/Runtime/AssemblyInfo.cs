@@ -11,3 +11,6 @@ using JLChnToZ.VRC.Foundation.I18N;
 #if VRCSDK_3_8_1_OR_NEWER
 [assembly: DeclareDefine("VRCSDK_3_8_1_OR_NEWER")]
 #endif
+#if VRCSDK_3_9_0_OR_NEWER
+[assembly: DeclareDefine("VRCSDK_3_9_0_OR_NEWER")]
+#endif

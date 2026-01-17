@@ -3,6 +3,8 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.Data;
 using VRC.SDKBase;
+using VRC.SDK3.Persistence;
+
 
 #if UNITY_EDITOR && !COMPILER_UDONSHARP
 using System.Text;
@@ -22,6 +24,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         [SerializeField, LocalizedLabel] TextAsset[] languageJsonFiles;
         [SerializeField, Multiline, LocalizedLabel] string languageJson;
         [SerializeField, HideInInspector] DataDictionary languages;
+        [SerializeField, LocalizedLabel] string savedLanguageKey = "vvrcw_language";
         DataDictionary currentLanguage;
 
         [FieldChangeCallback(nameof(LanguageKey))]
@@ -43,6 +46,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             get => languageKey;
             set {
                 languageKey = value;
+                if (!string.IsNullOrEmpty(savedLanguageKey)) PlayerData.SetString(savedLanguageKey, languageKey);
                 ChangeLanguage();
             }
         }
@@ -67,6 +71,9 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         }
 
         void DetectLanguage(string uiLanguage) {
+            if (!string.IsNullOrEmpty(savedLanguageKey) &&
+                PlayerData.TryGetString(Networking.LocalPlayer, savedLanguageKey, out var savedLang))
+                uiLanguage = savedLang;
             if (requestedUILanguage == uiLanguage) return;
             requestedUILanguage = uiLanguage;
             var localTimeZone = TimeZoneInfo.Local.Id;
@@ -130,13 +137,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             SendEvent("_OnLanguageChanged");
         }
 
-#if VRCSDK_3_7_0_OR_NEWER
         public override void OnLanguageChanged(string language) => DetectLanguage(language);
-#else
-        [NonSerialized]
-        public string onLanguageChangedLanguage;
-        public void _onLanguageChanged() => DetectLanguage(onLanguageChangedLanguage);
-#endif
     }
 
 #if UNITY_EDITOR && !COMPILER_UDONSHARP

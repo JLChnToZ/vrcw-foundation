@@ -1,8 +1,11 @@
 using System;
 using UnityEngine;
+using UnityEngine.Pool;
 using UnityEditor;
 using UdonSharpEditor;
 using JLChnToZ.VRC.Foundation.Editors;
+
+using UnityObject = UnityEngine.Object;
 
 namespace JLChnToZ.VRC.Foundation.I18N.Editors {
     [CustomEditor(typeof(LanguageManager))]
@@ -11,9 +14,34 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
         SerializedProperty languageJsonFiles, languageJson;
         LanguageEditorWindow openedWindow;
         SerializedReorderableList languageJsonFilesList;
+        SerializedObject savedLanguageKeyObject;
+        SerializedProperty savedLanguageKeyProperty;
         GUIStyle wrappedTextAreaStyle;
         bool showJson = false;
         [NonSerialized] bool hasInit;
+
+        bool InitSavedLanguageKey() {
+            var currentList = FindObjectsOfType<LanguageManager>(true);
+            if (savedLanguageKeyObject != null) {
+                var targetList = savedLanguageKeyObject.targetObjects;
+                if (targetList.Length == currentList.Length)
+                using (HashSetPool<UnityObject>.Get(out var currentSet)) {
+                    currentSet.UnionWith(savedLanguageKeyObject.targetObjects);
+                    var allMatch = true;
+                    foreach (var lm in currentList) {
+                        if (!currentSet.Contains(lm)) {
+                            allMatch = false;
+                            break;
+                        }
+                    }
+                    if (allMatch) return false;
+                }
+                savedLanguageKeyObject.Dispose();
+            }
+            savedLanguageKeyObject = new SerializedObject(currentList);
+            savedLanguageKeyProperty = savedLanguageKeyObject.FindProperty("savedLanguageKey");
+            return true;
+        }
 
         protected void OnEnable() {
             if (textContent == null) textContent = new GUIContent();
@@ -24,7 +52,16 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
             languageJsonFiles = serializedObject.FindProperty("languageJsonFiles");
             languageJson = serializedObject.FindProperty("languageJson");
             languageJsonFilesList = new SerializedReorderableList(languageJsonFiles);
+            InitSavedLanguageKey();
             hasInit = true;
+        }
+
+        protected void OnDisable() {
+            if (savedLanguageKeyObject != null) {
+                savedLanguageKeyObject.Dispose();
+                savedLanguageKeyObject = null;
+                savedLanguageKeyProperty = null;
+            }
         }
         
         public override void OnInspectorGUI() {
@@ -52,6 +89,19 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                 }
             }
             serializedObject.ApplyModifiedProperties();
+            savedLanguageKeyObject.Update();
+            EditorGUILayout.Space();
+            using (var changed = new EditorGUI.ChangeCheckScope()) {
+                EditorGUILayout.PropertyField(savedLanguageKeyProperty, true);
+                if (changed.changed && !savedLanguageKeyProperty.hasMultipleDifferentValues) {
+                    var value = savedLanguageKeyProperty.stringValue;
+                    if (InitSavedLanguageKey()) {
+                        savedLanguageKeyObject.Update();
+                        savedLanguageKeyProperty.stringValue = value;
+                    }
+                }
+            }
+            savedLanguageKeyObject.ApplyModifiedProperties();
         }
     }
 }
