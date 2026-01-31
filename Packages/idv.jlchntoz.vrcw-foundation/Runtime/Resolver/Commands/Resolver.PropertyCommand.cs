@@ -62,10 +62,13 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
 
                 public void Next(PropertyCommand cmd) {
                     if (enumerator != null) {
-                        while (enumerator.MoveNext()) {
+                        current = null;
+                        bool hasNext;
+                        while (hasNext = enumerator.MoveNext()) {
                             current = enumerator.Current;
                             if (IsObjectValid(current)) break;
                         }
+                        if (!hasNext) enumerator = null;
                         return;
                     }
                     enumerator = null;

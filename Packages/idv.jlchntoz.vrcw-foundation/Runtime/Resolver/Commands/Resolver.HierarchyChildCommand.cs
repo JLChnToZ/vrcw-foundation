@@ -95,18 +95,24 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         s.current = component.transform;
                     else
                         s.current = null;
-                    s.index = 0;
+                    s.index = -1;
                 }
             }
 
             public void Next(ICommandState state) {
                 if (state is State s && s.current) {
-                    for (int count = s.current.childCount; s.index < count; s.index++) {
+                    if (s.current == null) return;
+                    int count = s.current.childCount;
+                    while (true) {
+                        s.index++;
+                        if (s.index >= count) {
+                            s.current = null;
+                            break;
+                        }
                         var child = s.current.GetChild(s.index);
                         if (childNameRegex != null ? childNameRegex.IsMatch(child.name) : child.name == childName)
                             return;
                     }
-                    s.current = null;
                 }
             }
 

@@ -72,9 +72,9 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                     case '/':
                         switch (mode) {
                             case ParsePathMode.AutoDetect:
+                                mode = ParsePathMode.Hierarchy;
                                 if (sb.Length == 0) {
                                     commandList.Add(HierarchyRootCommand.instance);
-                                    mode = ParsePathMode.Hierarchy;
                                     break;
                                 }
                                 goto case ParsePathMode.Hierarchy;
