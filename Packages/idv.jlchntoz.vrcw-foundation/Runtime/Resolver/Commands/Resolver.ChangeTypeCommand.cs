@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class ChangeTypeCommand : IResolverCommand {
-            static readonly List<Component> tempComponents = new List<Component>();
             public readonly Type type;
 
             public static readonly ChangeTypeCommand anyType = new ChangeTypeCommand();
@@ -32,7 +30,8 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                             s.queue.Enqueue(component.gameObject);
                             return;
                         }
-                        if (type == null || typeof(Component).IsAssignableFrom(type)) {
+                        if (type == null || typeof(Component).IsAssignableFrom(type))
+                        using (ListPool<Component>.Get(out var tempComponents)) {
                             component.GetComponents(type ?? typeof(Component), tempComponents);
                             foreach (var other in tempComponents)
                                 if (other != component)
@@ -41,7 +40,8 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         }
                     } else if (from is GameObject gameObject) {
                         if (!gameObject) return;
-                        if (type == null || typeof(Component).IsAssignableFrom(type)) {
+                        if (type == null || typeof(Component).IsAssignableFrom(type))
+                        using (ListPool<Component>.Get(out var tempComponents)) {
                             gameObject.GetComponents(type ?? typeof(Component), tempComponents);
                             foreach (var other in tempComponents)
                                 s.queue.Enqueue(other);

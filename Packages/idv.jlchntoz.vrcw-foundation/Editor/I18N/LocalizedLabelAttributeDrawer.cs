@@ -1,20 +1,19 @@
+using System;
 using UnityEngine;
 using UnityEditor;
 using JLChnToZ.VRC.Foundation.Editors;
-using System.Collections.Generic;
-using System;
 
 namespace JLChnToZ.VRC.Foundation.I18N.Editors {
     [CustomPropertyDrawer(typeof(LocalizedLabelAttribute))]
     public class LocalizedLabelAttributeDrawer : PropertyDrawer {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label) {
             Resolve(property, label);
-            EditorGUI.PropertyField(position, property, label);
+            EditorGUI.PropertyField(position, property, label, property.isExpanded);
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label) {
             Resolve(property, label);
-            return EditorGUI.GetPropertyHeight(property, label);
+            return EditorGUI.GetPropertyHeight(property, label, property.isExpanded);
         }
 
         void Resolve(SerializedProperty property, GUIContent label) =>

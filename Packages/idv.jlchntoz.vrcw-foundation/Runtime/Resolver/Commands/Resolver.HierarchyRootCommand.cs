@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace JLChnToZ.VRC.Foundation.Resolvers {
     public partial class Resolver {
         sealed class HierarchyRootCommand : IResolverCommand {
-            readonly List<GameObject> roots = new List<GameObject>();
-
             public static readonly HierarchyRootCommand instance = new HierarchyRootCommand();
 
             public ICommandState CreateState() => new QueueState();
@@ -23,8 +22,10 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                         go = null;
                     s.queue.Clear();
                     if (!go) return;
-                    go.scene.GetRootGameObjects(roots);
-                    foreach (var root in roots) s.queue.Enqueue(root.transform);
+                    using (ListPool<GameObject>.Get(out var roots)) {
+                        go.scene.GetRootGameObjects(roots);
+                        foreach (var root in roots) s.queue.Enqueue(root.transform);
+                    }
                 }
             }
 
