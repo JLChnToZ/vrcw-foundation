@@ -11,7 +11,6 @@ using UnityObject = UnityEngine.Object;
 namespace JLChnToZ.VRC.Foundation.Editors {
     public static class Utils {
         static readonly StringBuilder sb = new StringBuilder();
-        static readonly Stack<Transform> transformStack = new Stack<Transform>();
         static GUIContent tempContent;
         static readonly GetFieldInfoAndStaticTypeFromPropertyDelegate getFieldInfoAndStaticTypeFromProperty = Delegate.CreateDelegate(
             typeof(GetFieldInfoAndStaticTypeFromPropertyDelegate), Type
@@ -21,66 +20,29 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         delegate FieldInfo GetFieldInfoAndStaticTypeFromPropertyDelegate(SerializedProperty property, out Type type);
 
-        public static IEnumerable<T> IterateAllComponents<T>(this Scene scene, bool includeEditorOnly = false) where T : Component {
-            var pending = new Stack<Transform>();
-            var rootGameObjects = scene.GetRootGameObjects();
-            for (int i = rootGameObjects.Length - 1; i >= 0; i--) pending.Push(rootGameObjects[i].transform);
-            return IterateAllComponents<T>(pending, includeEditorOnly);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IEnumerable<T> IterateAllComponents<T>(Scene scene, bool includeEditorOnly = false) where T : Component =>
+            TransformUtils.IterateAllComponents<T>(scene, includeEditorOnly);
 
-        public static IEnumerable<T> IterateAllComponents<T>(this GameObject gameObject, bool includeEditorOnly = false) where T : Component {
-            var pending = new Stack<Transform>();
-            pending.Push(gameObject.transform);
-            return IterateAllComponents<T>(pending, includeEditorOnly);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IEnumerable<T> IterateAllComponents<T>(GameObject gameObject, bool includeEditorOnly = false) where T : Component  =>
+            TransformUtils.IterateAllComponents<T>(gameObject, includeEditorOnly);
 
-        public static IEnumerable<T> IterateAllComponents<T>(Stack<Transform> pending, bool includeEditorOnly) where T : Component {
-            var components = new List<T>();
-            while (pending.TryPop(out var transform)) {
-                if (transform == null || (!includeEditorOnly && transform.CompareTag("EditorOnly"))) continue;
-                for (int i = transform.childCount - 1; i >= 0; i--) pending.Push(transform.GetChild(i));
-                components.Clear();
-                transform.GetComponents(components);
-                foreach (var component in components) if (component != null) yield return component;
-            }
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IEnumerable<T> IterateAllComponents<T>(Stack<Transform> pending, bool includeEditorOnly) where T : Component =>
+            TransformUtils.IterateAllComponents<T>(pending, includeEditorOnly);
 
-        public static bool IsAvailableOnRuntime(this UnityObject gameObjectOrComponent) {
-            if (gameObjectOrComponent == null) return false;
-            for (var transform =
-                gameObjectOrComponent is Transform t ? t :
-                gameObjectOrComponent is GameObject go ? go.transform :
-                gameObjectOrComponent is Component c ? c.transform :
-                null;
-                transform != null; transform = transform.parent)
-                if (transform.CompareTag("EditorOnly")) return false;
-            return true;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsAvailableOnRuntime(UnityObject gameObjectOrComponent) =>
+            TransformUtils.IsAvailableOnRuntime(gameObjectOrComponent);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FindClosestComponentInHierarchy<T>(Transform startFrom, GameObject[] roots = null) where T : Component =>
-            FindClosestComponentInHierarchy(startFrom, typeof(T), roots) as T;
+            TransformUtils.FindClosestComponentInHierarchy<T>(startFrom, roots);
 
-        public static Component FindClosestComponentInHierarchy(Transform startFrom, Type type, GameObject[] roots = null) {
-            for (Transform transform = startFrom, lastTransform = null; transform != null; transform = transform.parent) {
-                if (transform.TryGetComponent(type, out var result)) return result;
-                foreach (Transform child in transform) {
-                    if (lastTransform == child) continue;
-                    result = transform.GetComponentInChildren(type, true);
-                    if (result != null) return result;
-                }
-                lastTransform = transform;
-            }
-            if (roots == null) {
-                var scene = startFrom.gameObject.scene;
-                if (!scene.IsValid()) return null;
-                roots = scene.GetRootGameObjects();
-            }
-            foreach (var root in roots) {
-                var result = root.GetComponentInChildren(type, true);
-                if (result != null) return result;
-            }
-            return null;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Component FindClosestComponentInHierarchy(Transform startFrom, Type type, GameObject[] roots = null) =>
+            TransformUtils.FindClosestComponentInHierarchy(startFrom, type, roots);
 
         public static void DeleteElement(SerializedProperty property, int index) {
             int size = property.arraySize;
@@ -221,16 +183,17 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         static string GetPathFromHierarchy(Transform transform) {
             try {
-                for (var t = transform; t != null; t = t.parent)
-                    transformStack.Push(t);
-                while (transformStack.TryPop(out var t)) {
-                    sb.Append(t.name);
-                    if (transformStack.Count > 0) sb.Append('/');
+                using (PooledObjectExtensions.Get(out Stack<Transform> transformStack)) {
+                    for (var t = transform; t != null; t = t.parent)
+                        transformStack.Push(t);
+                    while (transformStack.TryPop(out var t)) {
+                        sb.Append(t.name);
+                        if (transformStack.Count > 0) sb.Append('/');
+                    }
+                    return sb.ToString();
                 }
-                return sb.ToString();
             } finally {
                 sb.Clear();
-                transformStack.Clear();
             }
         }
 
@@ -243,77 +206,78 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             bool isFlags = type.GetCustomAttribute<FlagsAttribute>() != null;
             var rawValues = Enum.GetValues(type);
             var typeCode = Type.GetTypeCode(type);
-            var nameList = new List<string>(rawValues.Length);
-            var valueList = new List<long>(rawValues.Length);
-            var valueSet = new HashSet<long>(rawValues.Length);
-            for (int i = 0; i < rawValues.Length; i++) {
-                var enumValue = rawValues.GetValue(i);
-                long value = typeCode == TypeCode.UInt64 ?
-                    unchecked((long)Convert.ToUInt64(enumValue)) :
-                    Convert.ToInt64(enumValue);
-                if (isFlags && value == 0) continue;
-                var name = Enum.GetName(type, enumValue);
-                var matchingMember = type.GetField(name);
-                if (matchingMember != null) {
-                    if (matchingMember.GetCustomAttribute<ObsoleteAttribute>() != null ||
-                        matchingMember.GetCustomAttribute<HideInInspector>() != null) continue;
-                    if (resolveDisplayName) {
-                        var displayName = matchingMember.GetCustomAttribute<InspectorNameAttribute>();
-                        if (displayName != null && !string.IsNullOrWhiteSpace(displayName.displayName))
-                            name = displayName.displayName;
-                        else
+            using (PooledObjectExtensions.Get(out List<string> nameList, rawValues.Length))
+            using (PooledObjectExtensions.Get(out List<long> valueList, rawValues.Length)) {
+                using (PooledObjectExtensions.Get(out HashSet<long> valueSet, rawValues.Length))
+                    for (int i = 0; i < rawValues.Length; i++) {
+                        var enumValue = rawValues.GetValue(i);
+                        long value = typeCode == TypeCode.UInt64 ?
+                        unchecked((long)Convert.ToUInt64(enumValue)) :
+                        Convert.ToInt64(enumValue);
+                        if (isFlags && value == 0) continue;
+                        var name = Enum.GetName(type, enumValue);
+                        var matchingMember = type.GetField(name);
+                        if (matchingMember != null) {
+                            if (matchingMember.GetCustomAttribute<ObsoleteAttribute>() != null ||
+                                matchingMember.GetCustomAttribute<HideInInspector>() != null) continue;
+                            if (resolveDisplayName) {
+                                var displayName = matchingMember.GetCustomAttribute<InspectorNameAttribute>();
+                                if (displayName != null && !string.IsNullOrWhiteSpace(displayName.displayName))
+                                    name = displayName.displayName;
+                                else
+                                    name = ObjectNames.NicifyVariableName(name);
+                            }
+                        } else if (resolveDisplayName)
                             name = ObjectNames.NicifyVariableName(name);
+                        if (!valueSet.Add(value)) continue;
+                        nameList.Add(name);
+                        valueList.Add(value);
                     }
-                } else if (resolveDisplayName)
-                    name = ObjectNames.NicifyVariableName(name);
-                if (!valueSet.Add(value)) continue;
-                nameList.Add(name);
-                valueList.Add(value);
-            }
-            // If flag count still more than 32, sacrifice some of them,
-            // starting from the ones with the most bits set,
-            // which likely to be shorthands of common combinations,
-            // including something like "All".
-            if (isFlags && nameList.Count > 32) {
-                int count = nameList.Count;
-                var skip = new bool[count];
-                var bitCount = new int[count];
-                var bcSet = new HashSet<int>(count);
-                // Calculate bit count for each value
-                for (int i = 0; i < count; i++) {
-                    long value = valueList[i];
-                    value = (value & 0x5555555555555555L) + ((value >>  1) & 0x5555555555555555L);
-                    value = (value & 0x3333333333333333L) + ((value >>  2) & 0x3333333333333333L);
-                    value = (value & 0x0F0F0F0F0F0F0F0FL) + ((value >>  4) & 0x0F0F0F0F0F0F0F0FL);
-                    value = (value & 0x00FF00FF00FF00FFL) + ((value >>  8) & 0x00FF00FF00FF00FFL);
-                    value = (value & 0x0000FFFF0000FFFFL) + ((value >> 16) & 0x0000FFFF0000FFFFL);
-                    value = (value & 0x00000000FFFFFFFFL) + ((value >> 32) & 0x00000000FFFFFFFFL);
-                    bitCount[i] = (int)value;
-                    bcSet.Add(i);
+                // If flag count still more than 32, sacrifice some of them,
+                // starting from the ones with the most bits set,
+                // which likely to be shorthands of common combinations,
+                // including something like "All".
+                if (isFlags && nameList.Count > 32) {
+                    int count = nameList.Count;
+                    var skip = new bool[count];
+                    var bitCount = new int[count];
+                    var bcSet = new HashSet<int>(count);
+                    // Calculate bit count for each value
+                    for (int i = 0; i < count; i++) {
+                        long value = valueList[i];
+                        value = (value & 0x5555555555555555L) + ((value >>  1) & 0x5555555555555555L);
+                        value = (value & 0x3333333333333333L) + ((value >>  2) & 0x3333333333333333L);
+                        value = (value & 0x0F0F0F0F0F0F0F0FL) + ((value >>  4) & 0x0F0F0F0F0F0F0F0FL);
+                        value = (value & 0x00FF00FF00FF00FFL) + ((value >>  8) & 0x00FF00FF00FF00FFL);
+                        value = (value & 0x0000FFFF0000FFFFL) + ((value >> 16) & 0x0000FFFF0000FFFFL);
+                        value = (value & 0x00000000FFFFFFFFL) + ((value >> 32) & 0x00000000FFFFFFFFL);
+                        bitCount[i] = (int)value;
+                        bcSet.Add(i);
+                    }
+                    var bc = new int[bcSet.Count];
+                    bcSet.CopyTo(bc);
+                    Array.Sort(bc);
+                    for (int bci = bc.Length - 1, bcc = bitCount.Length; count > 32 && bci >= 0;) {
+                        int i = Array.LastIndexOf(bitCount, bc[bci], bcc - 1);
+                        if (i < 0) {
+                            bci--;
+                            bcc = bitCount.Length;
+                        } else {
+                            skip[i] = true;
+                            count--;
+                            bcc = i;
+                        }
+                    }
+                    for (int i = skip.Length - 1; i >= 0; i--)
+                        if (skip[i]) {
+                            nameList.RemoveAt(i);
+                            valueList.RemoveAt(i);
+                        }
                 }
-                var bc = new int[bcSet.Count];
-                bcSet.CopyTo(bc);
-                Array.Sort(bc);
-                for (int bci = bc.Length - 1, bcc = bitCount.Length; count > 32 && bci >= 0;) {
-                    int i = Array.LastIndexOf(bitCount, bc[bci], bcc - 1);
-                    if (i < 0) {
-                        bci--;
-                        bcc = bitCount.Length;
-                    } else {
-                        skip[i] = true;
-                        count--;
-                        bcc = i;
-                    }
-                }
-                for (int i = skip.Length - 1; i >= 0; i--)
-                    if (skip[i]) {
-                        nameList.RemoveAt(i);
-                        valueList.RemoveAt(i);
-                    }
+                names = nameList.ToArray();
+                values = valueList.ToArray();
+                return true;
             }
-            names = nameList.ToArray();
-            values = valueList.ToArray();
-            return true;
         }
     }
 }
