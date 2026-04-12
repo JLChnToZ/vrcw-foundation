@@ -21,11 +21,11 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         delegate FieldInfo GetFieldInfoAndStaticTypeFromPropertyDelegate(SerializedProperty property, out Type type);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static IEnumerable<T> IterateAllComponents<T>(Scene scene, bool includeEditorOnly = false) where T : Component =>
+        public static IEnumerable<T> IterateAllComponents<T>(this Scene scene, bool includeEditorOnly = false) where T : Component =>
             TransformUtils.IterateAllComponents<T>(scene, includeEditorOnly);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static IEnumerable<T> IterateAllComponents<T>(GameObject gameObject, bool includeEditorOnly = false) where T : Component  =>
+        public static IEnumerable<T> IterateAllComponents<T>(this GameObject gameObject, bool includeEditorOnly = false) where T : Component  =>
             TransformUtils.IterateAllComponents<T>(gameObject, includeEditorOnly);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -33,15 +33,15 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             TransformUtils.IterateAllComponents<T>(pending, includeEditorOnly);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsAvailableOnRuntime(UnityObject gameObjectOrComponent) =>
+        public static bool IsAvailableOnRuntime(this UnityObject gameObjectOrComponent) =>
             TransformUtils.IsAvailableOnRuntime(gameObjectOrComponent);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T FindClosestComponentInHierarchy<T>(Transform startFrom, GameObject[] roots = null) where T : Component =>
+        public static T FindClosestComponentInHierarchy<T>(this Transform startFrom, GameObject[] roots = null) where T : Component =>
             TransformUtils.FindClosestComponentInHierarchy<T>(startFrom, roots);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Component FindClosestComponentInHierarchy(Transform startFrom, Type type, GameObject[] roots = null) =>
+        public static Component FindClosestComponentInHierarchy(this Transform startFrom, Type type, GameObject[] roots = null) =>
             TransformUtils.FindClosestComponentInHierarchy(startFrom, type, roots);
 
         public static void DeleteElement(SerializedProperty property, int index) {
