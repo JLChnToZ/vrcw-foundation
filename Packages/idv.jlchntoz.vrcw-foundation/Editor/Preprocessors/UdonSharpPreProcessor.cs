@@ -12,7 +12,7 @@ using UdonSharpEditor;
 namespace JLChnToZ.VRC.Foundation.Editors {
     internal abstract class UdonSharpPreProcessor : IPreprocessor {
         protected static readonly Dictionary<Type, MonoScript> scriptMap = new Dictionary<Type, MonoScript>();
-        readonly Dictionary<Type, FieldInfo[]> filteredFields = new Dictionary<Type, FieldInfo[]>();
+        readonly Dictionary<(Type, Type), FieldInfo[]> filteredFields = new Dictionary<(Type, Type), FieldInfo[]>();
 
         public virtual int Priority => 0;
 
@@ -43,17 +43,18 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         protected virtual void ProcessEntry(Type type, MonoBehaviour entry, UdonBehaviour udon) {}
 
         protected FieldInfo[] GetFields<T>(Type type) {
-            if (!filteredFields.TryGetValue(type, out var fieldInfos)) {
+            var key = (type, typeof(T));
+            if (!filteredFields.TryGetValue(key, out var fieldInfos)) {
                 var fieldList = new List<FieldInfo>();
                 Func<FieldInfo, bool> filter = typeof(Attribute).IsAssignableFrom(typeof(T)) ? IsAttributeDefined<T> : IsAssignable<T>;
                 for (var t = type; t != null && t != typeof(object); t = t.BaseType) {
-                    if (filteredFields.TryGetValue(t, out fieldInfos)) {
+                    if (filteredFields.TryGetValue((t, typeof(T)), out fieldInfos)) {
                         fieldList.AddRange(fieldInfos);
                         break;
                     }
                     fieldList.AddRange(t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Where(filter));
                 }
-                filteredFields[type] = fieldInfos = fieldList.ToArray();
+                filteredFields[key] = fieldInfos = fieldList.ToArray();
             }
             return fieldInfos;
         }
