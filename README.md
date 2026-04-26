@@ -13,17 +13,23 @@ Documentations on each tools/utilities will be available once the project struct
 > [!IMPORTANT]
 > **This project is licensed under the MIT License — it is NOT public domain, and it is NOT CC0.**
 > 
-> You are very welcome to use, modify, and redistribute this code in your own projects, including commercial ones. However, the MIT License **requires** that the copyright notice and license text be retained in all copies or substantial portions of the software.
+> You are very welcome to use, modify, and redistribute this code in your own projects, including commercial ones. However, the MIT License **requires** that the copyright notice and license text be retained in all copies **or substantial portions** of the Software.
 > 
-> **This requirement applies even to a single line of code.** Copying a snippet — no matter how small — and disguising it through renaming, reformatting, or refactoring does **not** exempt you from the attribution obligation. "I rewrote it in my own style" is not a valid reason to omit credit. If the logic, structure, or implementation is derived from this project, you must give credit.
+> Please note:
 > 
-> Please include, at minimum:
+> - **"Substantial portion" is not limited to large blocks of code.** A distinctive function, a non-trivial algorithm, or a creative implementation can qualify — even if it's short.
+> - **Cosmetic changes do not remove the obligation.** Renaming variables, reformatting, or mechanically refactoring a copied portion does not make it your own work. If the expression is derived from this project, attribution is required.
+> - **Reimplementing an idea from scratch is fine.** Copyright protects expression, not ideas or algorithms. If you read this code, understand the concept, and write your own implementation independently, you owe nothing — though a mention is always appreciated.
+> 
+> To comply, please include at minimum:
 > 
 > - The original copyright notice (`Copyright (c) [year] [author]`)
 > - A copy of the MIT License text
 > - A reasonable indication of the source (e.g., a link to this repository)
 > 
-> Honest users have nothing to worry about — adding a few lines to your `LICENSE`, `NOTICE`, or `README` file is all it takes. But if you knowingly strip attribution and pass the code off as your own, you are violating the license, and your right to use this code is automatically terminated.
+> Honest users have nothing to worry about — adding a few lines to your `LICENSE`, `NOTICE`, or `README` is all it takes.
+> 
+> **However, be aware:** the MIT License's permission is **conditional on compliance**. Copy a substantial portion without attribution, and your use falls outside the license — leaving plain, unlicensed copying under copyright law. No grace period, no prior warning, no revocation needed: the permission simply never extended to that use. All remedies under copyright law are reserved.
 > 
 > Thank you for respecting the work of open-source authors.
 > 
@@ -31,18 +37,24 @@ Documentations on each tools/utilities will be available once the project struct
 > 
 > **本プロジェクトは MIT ライセンスの下で公開されています。パブリックドメインでも CC0 でもありません。**
 > 
-> 本コードを商用・非商用問わず、ご自身のプロジェクトで自由に使用・改変・再配布していただくことは大歓迎です。ただし、MIT ライセンスは、ソフトウェアの全体または**実質的な一部**を複製・再配布する際に、**著作権表示およびライセンス全文を保持すること**を**義務付けています**。
+> 本コードを商用・非商用問わず、ご自身のプロジェクトで自由に使用・改変・再配布していただくことは大歓迎です。ただし MIT ライセンスは、ソフトウェアの全体または**実質的な一部(substantial portion)**を複製・再配布する際に、**著作権表示およびライセンス全文を保持すること**を**義務付けています**。
 > 
-> **この義務は、たとえ 1 行のコードであっても適用されます。** どれほど短いコード片であっても、変数名の変更・整形・リファクタリング等によって「自作風」に偽装したとしても、帰属表示の義務から免れることはできません。「自分のスタイルで書き直したからオリジナル」という主張は通用しません。ロジック・構造・実装が本プロジェクトに由来するものである限り、出典の明記が必要です。
+> ご注意ください:
 > 
-> 特に、MIT ライセンスを「自由に使ってよい」「クレジット不要」と誤解されているケースが散見されますが、**それは誤りです**。MIT ライセンスは「無償で使える」ことと「無断で使える」ことを混同しないでください。
+> - **「実質的な一部」は、大量のコードに限られません。** 特徴的な関数、非自明なアルゴリズム、創作性のある実装などは、たとえ行数が少なくても該当しうるものです。
+> - **表面的な改変では義務を免れません。** 変数名の変更、整形、機械的なリファクタリングを施しても、コピー元の表現に依拠している限り「自作」にはなりません。本プロジェクトの表現に由来する部分には、帰属表示が必要です。
+> - **アイデアを理解して自力で書き直すのは問題ありません。** 著作権が保護するのは「表現」であって「アイデア」や「アルゴリズム」そのものではありません。本コードを読んで理解し、独立して自分で実装し直したのであれば、義務は発生しません（ひとこと言及していただけると嬉しいですが）。
 > 
-> 最低限、以下を明記してください:
+> 特に、MIT ライセンスを「自由に使ってよい」「クレジット不要」と誤解されているケースが散見されますが、**それは誤りです**。「無償で使える」ことと「無断で使える」ことは別物です。
 > 
-> - 元の著作権表示 (`Copyright (c) [年] [著作者名]`)
+> 遵守のため、最低限以下を明記してください：
+> 
+> - 元の著作権表示（`Copyright (c) [年] [著作者名]`）
 > - MIT ライセンス全文の同梱
-> - 出典の明示(本リポジトリへのリンク等)
+> - 出典の明示（本リポジトリへのリンク等）
 > 
-> 良識のあるご利用者の方には何も難しいことはありません。`LICENSE`・`NOTICE`・`README` のいずれかに数行追記するだけで完了します。しかし、意図的に帰属表示を削除し、自作コードと偽る行為はライセンス違反であり、その時点で本コードを使用する権利は**自動的に消滅します**。
+> 良識あるご利用者の方には難しいことは何もありません。`LICENSE`・`NOTICE`・`README` のいずれかに数行追記するだけです。
+> 
+> **ただし、ご承知おきください。** MIT ライセンスによる許諾は、**本規定の遵守を条件として成立します**。実質的な一部を帰属表示なく複製した時点で、その利用はライセンスの範囲外となり、残るのは単なる**無許諾複製=著作権侵害**です。猶予期間・事前警告・許諾取消通知のいずれも必要ありません — その利用には最初から許諾が及んでいないからです。著作権法上のあらゆる救済手段を留保します。
 > 
 > オープンソース作者の労力に敬意を払っていただき、ありがとうございます。
