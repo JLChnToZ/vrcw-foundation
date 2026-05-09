@@ -66,21 +66,25 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 var eventTargetMap = sender.namedTargets ??= new DataDictionary();
                 foreach (var (eventName, target) in kv.Value) {
                     if (string.IsNullOrEmpty(eventName)) continue;
-                    if (target == null) continue;
-                    if (!eventTargetMap.TryGetValue(eventName, out var dt)) {
-                        eventTargetMap[eventName] = target;
+                    var realTarget = target is UdonBehaviour ub ? ub :
+                        target is UdonSharpBehaviour usb ? UdonSharpEditorUtility.GetBackingUdonBehaviour(usb) :
+                        null;
+                    if (realTarget == null) continue;
+                    DataToken eventNameToken = BindEventPreprocessor.GetMappedName(eventName);
+                    if (!eventTargetMap.TryGetValue(eventNameToken, out var dt)) {
+                        eventTargetMap[eventNameToken] = realTarget;
                         continue;
                     }
                     DataList dtList;
                     switch (dt.TokenType) {
                         case TokenType.Reference:
-                            if (dt == target) break;
-                            eventTargetMap[eventName] = new DataList { dt, target };;
+                            if (dt == realTarget) break;
+                            eventTargetMap[eventNameToken] = new DataList { dt, realTarget };
                             break;
                         case TokenType.DataList:
                             dtList = dt.DataList;
-                            if (dtList.Contains(target)) break;
-                            dtList.Add(target);
+                            if (dtList.Contains(realTarget)) break;
+                            dtList.Add(realTarget);
                             break;
                     }
                 }

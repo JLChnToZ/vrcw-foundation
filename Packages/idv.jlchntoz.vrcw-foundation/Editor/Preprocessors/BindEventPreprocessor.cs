@@ -103,7 +103,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             UnityEventTools.AddStringPersistentListener(callback, call, targetEventName);
         }
 
-        static string GetMappedName(string eventName) {
+        public static string GetMappedName(string eventName) {
             if (!hasTypeNameMappingInit) {
                 foreach (var def in UdonEditorManager.Instance.GetNodeDefinitions()) {
                     if (!def.fullName.StartsWith("Event_")) continue;
