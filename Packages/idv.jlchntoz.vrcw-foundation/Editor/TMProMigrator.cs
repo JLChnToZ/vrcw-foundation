@@ -31,7 +31,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         [MenuItem("Tools/JLChnToZ VRCW Foundation/Fix TMPro Visibility")]
         static void FixVisibility() {
-            var temp = new List<TextMeshProUGUI>();
+            using (PooledObjectExtensions.Get(out List<TextMeshProUGUI> temp))
             foreach (var gameObject in Selection.gameObjects) {
                 gameObject.GetComponentsInChildren(true, temp);
                 foreach (var text in temp) {
@@ -64,9 +64,9 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         public static void Migrate(GameObject root) => MigrateAsync(root).Forget();
 
         public static async UniTask MigrateAsync(GameObject root) {
-            var migratableTypes = new Dictionary<Type, bool>();
-            var migratableFields = new Dictionary<Type, Dictionary<FieldInfo, FieldInfo>>();
-            var newCreated = new Dictionary<FieldInfo, TextMeshProUGUI>();
+            using (PooledObjectExtensions.Get(out Dictionary<Type, bool> migratableTypes))
+            using (PooledObjectExtensions.Get(out Dictionary<Type, Dictionary<FieldInfo, FieldInfo>> migratableFields))
+            using (PooledObjectExtensions.Get(out Dictionary<FieldInfo, TextMeshProUGUI> newCreated))
             foreach (var monoBehaviour in root.GetComponentsInChildren<MonoBehaviour>(true)) {
                 var type = monoBehaviour.GetType();
                 if (!migratableTypes.TryGetValue(type, out var isTypeMigratable))
@@ -119,7 +119,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         }
                 }
             }
-            var components = new List<Component>();
+            using (PooledObjectExtensions.Get(out List<Component> components))
             foreach (var text in root.GetComponentsInChildren<Text>(true)) {
                 if (!ComponentReplacer.CanAllReferencesReplaceWith<TextMeshProUGUI>(text)) continue;
                 text.GetComponents(components);

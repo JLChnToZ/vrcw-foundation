@@ -34,12 +34,13 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 var fieldType = field.FieldType;
                 bool isStringArray = fieldType == typeof(string[]);
                 bool isVRCUrlArray = fieldType == typeof(VRCUrl[]);
-                if (!isStringArray && !isVRCUrlArray) {
-                    Debug.LogError($"[GeneratedUrlsPreprocessor] Field '{field.Name}' in {type} has GeneratedUrlsAttribute but is not string[] or VRCUrl[]");
+                bool isDataDictionary = fieldType == typeof(DataDictionary);
+                if (!isStringArray && !isVRCUrlArray && !isDataDictionary) {
+                    Debug.LogError($"[GeneratedUrlsPreprocessor] Field '{field.Name}' in {type} has GeneratedUrlsAttribute but is not string[], VRCUrl[], or DataDictionary (actual: {fieldType})");
                     continue;
                 }
                 var attr = field.GetCustomAttribute<GeneratedUrlsAttribute>();
-                if (!TryFindValue<GeneratedUrlsAttribute, string>(patternSourceCache, type, attr, entry, GetPatternSourceKey, out var pattern))
+                if (!TryFindValue<GeneratedUrlsAttribute, string>(patternSourceCache, type, attr, entry, GetPatternSourceKey, false, out var pattern))
                     pattern = attr.Pattern;
                 if (string.IsNullOrEmpty(pattern)) {
                     Debug.LogError($"[GeneratedUrlsPreprocessor] No pattern provided for field '{field.Name}' in {type}");
@@ -55,7 +56,19 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     }
                 }
                 int counter = attr.Limit;
-                field.SetValue(entry, isStringArray ? ConvertToArray(generator, Thru, counter) : ConvertToArray(generator, ToVRCUrl, counter));
+                if (isDataDictionary) {
+                    var dict = new DataDictionary();
+                    var regex = new Regex(pattern);
+                    foreach (var str in generator) {
+                        if (counter-- <= 0) break;
+                        var match = regex.Match(str);
+                        if (!match.Success) continue;
+                        var groups = match.Groups;
+                        dict[groups.Count > 1 ? groups[1].Value : str] = new DataToken(new VRCUrl(str));
+                    }
+                    field.SetValue(entry, dict);
+                } else
+                    field.SetValue(entry, isStringArray ? ConvertToArray(generator, Thru, counter) : ConvertToArray(generator, ToVRCUrl, counter));
                 hasChanges = true;
             }
             return hasChanges;
@@ -70,13 +83,14 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     continue;
                 }
                 var attr = field.GetCustomAttribute<GeneratedUrlMapperAttribute>();
-                if (!TryFindValue<GeneratedUrlMapperAttribute, Array>(mapperTargetCache, type, attr, entry, GetMapperTargetUrlArray, out var urlArray)) {
+                if (!TryFindValue<GeneratedUrlMapperAttribute, Array>(mapperTargetCache, type, attr, entry, GetMapperTargetUrlArray, attr.ClearSourceArray, out var urlArray)) {
                     Debug.LogError($"[GeneratedUrlsPreprocessor] Failed to find TargetUrlArray field for field '{field.Name}' in {type}");
                     continue;
                 }
-                if (!TryFindValue<GeneratedUrlMapperAttribute, string>(mapperSourceCache, type, attr, entry, GetMapperRegexPatternSourceKey, out var regexPattern))
+                if (!TryFindValue<GeneratedUrlMapperAttribute, string>(mapperSourceCache, type, attr, entry, GetMapperRegexPatternSourceKey, false, out var regexPattern))
                     regexPattern = attr.RegexPattern;
                 var dataDict = new DataDictionary();
+                bool indexOnly = attr.IndexOnly;
                 for (int i = 0, len = urlArray.Length; i < len; i++) {
                     var urlObj = urlArray.GetValue(i);
                     string urlStr = urlObj.ToString();
@@ -85,10 +99,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         continue;
                     }
                     if (string.IsNullOrEmpty(urlStr)) {
-                        dataDict[urlStr] = i;
+                        dataDict[urlStr] = indexOnly ? i : new DataToken(urlObj);
                         continue;
                     }
-                    var match = Regex.Match(urlStr, attr.RegexPattern);
+                    var match = Regex.Match(urlStr, regexPattern);
                     if (!match.Success) {
                         Debug.LogWarning($"[GeneratedUrlsPreprocessor] URL '{urlStr}' at index {i} in TargetUrlArray '{attr.TargetUrlArray}' in {type} does not match regex pattern '{attr.RegexPattern}'");
                         continue;
@@ -122,6 +136,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             TAttr attribute,
             object target,
             Func<TAttr, string> getSourceKey,
+            bool clearSource,
             out TResult result
         ) where TAttr : Attribute {
             if (!cache.TryGetValue((attribute, type), out var field)) {
@@ -138,6 +153,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             }
             if (field.GetValue(target) is TResult candidate) {
                 result = candidate;
+                if (clearSource) field.SetValue(target, type.IsValueType ? Activator.CreateInstance(type) : null);
                 return true;
             }
             result = default;

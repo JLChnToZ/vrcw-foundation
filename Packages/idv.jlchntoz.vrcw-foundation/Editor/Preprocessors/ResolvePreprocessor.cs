@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEditor;
+using VRC.SDK3.Data;
 using VRC.Udon;
 using UdonSharp;
 using UdonSharpEditor;
@@ -42,7 +43,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 if (hasAttribute) {
                     var fieldType = field.FieldType;
                     if (fieldType.IsArray) fieldType = fieldType.GetElementType();
-                    resolver.WithType(fieldType);
+                    if (fieldType != typeof(DataToken) &&
+                        fieldType != typeof(DataDictionary) &&
+                        fieldType != typeof(DataList))
+                        resolver.WithType(fieldType);
                 } else
                     resolver = null;
                 resolveFields[field] = resolver;
@@ -80,16 +84,29 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                 foreach (var field in GetFields<ResolveAttribute>(type)) {
                     try {
                         if (TryResolveUnchecked(field, entry, out var resolved) && !Equals(resolved, field.GetValue(entry))) {
-                            var prop = so.FindProperty(field.Name);
-                            if (prop.isArray && resolved is Array array) {
-                                prop.arraySize = array.Length;
-                                for (int i = 0; i < array.Length; i++)
-                                    prop.GetArrayElementAtIndex(i).SetBoxedValue(array.GetValue(i));
-                            } else
-                                prop.SetBoxedValue(resolved);
+                            var fieldType = field.FieldType;
+                            if (fieldType == typeof(DataToken) || fieldType == typeof(DataDictionary) || fieldType == typeof(DataList)) {
+                                var resolvedToken = DataResolver.ToVRCToken(resolved);
+                                if (fieldType == typeof(DataDictionary) && resolvedToken.TokenType == TokenType.DataDictionary)
+                                    field.SetValue(entry, resolved = resolvedToken.DataDictionary);
+                                else if (fieldType == typeof(DataList) && resolvedToken.TokenType == TokenType.DataList)
+                                    field.SetValue(entry, resolved = resolvedToken.DataList);
+                                else if (fieldType == typeof(DataToken))
+                                    field.SetValue(entry, resolved = resolvedToken);
+                                else
+                                    throw new InvalidCastException($"Cannot assign {resolvedToken.TokenType} to {fieldType.Name}");
+                            } else {
+                                var prop = so.FindProperty(field.Name);
+                                if (prop.isArray && resolved is Array array) {
+                                    prop.arraySize = array.Length;
+                                    for (int i = 0; i < array.Length; i++)
+                                        prop.GetArrayElementAtIndex(i).SetBoxedValue(array.GetValue(i));
+                                } else
+                                    prop.SetBoxedValue(resolved);
+                                changed = true;
+                            }
                             if (isAdaptor)
                                 udon.publicVariables.TrySetVariableValue(field.Name, resolved);
-                            changed = true;
                         }
                     } catch (Exception ex) {
                         Debug.LogError($"[ResolvePreprocessor] Unable to set `{field.Name}` in `{entry.name}`: {ex.Message}", entry);

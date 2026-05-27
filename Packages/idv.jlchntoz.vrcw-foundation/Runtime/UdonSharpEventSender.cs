@@ -98,7 +98,6 @@ namespace JLChnToZ.VRC.Foundation {
         /// </summary>
         /// <param name="name">The event name.</param>
         protected void SendEvent(string name) {
-            if (!Utilities.IsValid(targets)) return;
             if (logEvents) Debug.Log($"[{GetUdonTypeName()}] Send Event {name}");
             if (Utilities.IsValid(namedTargets) && namedTargets.TryGetValue(name, out var dt))
                 switch (dt.TokenType) {
@@ -114,7 +113,10 @@ namespace JLChnToZ.VRC.Foundation {
                         }
                         break;
                 }
-            foreach (var ub in targets) if (Utilities.IsValid(ub)) ub.SendCustomEvent(name);
+            if (Utilities.IsValid(targets))
+                foreach (var ub in targets)
+                    if (Utilities.IsValid(ub))
+                        ub.SendCustomEvent(name);
         }
 
 #if UNITY_EDITOR && !COMPILER_UDONSHARP

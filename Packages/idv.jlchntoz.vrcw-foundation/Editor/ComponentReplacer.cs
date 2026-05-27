@@ -17,7 +17,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         readonly Type componentType;
         readonly GameObject sourceGameObject;
         GameObject temporaryGameObject;
-        readonly Component[] componentsInGameObject;
+        readonly List<Component> componentsInGameObject;
         Component[] componentsInTemporary;
         readonly Component prefabComponent;
         readonly GameObject prefabInstance;
@@ -28,8 +28,9 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         public static T TryReplaceComponent<T>(Component oldComponent, bool copyContent) where T : Component {
             if (oldComponent == null) return null;
             var gameObject = oldComponent.gameObject;
-            var components = gameObject.GetComponents<Component>();
-            var index = Array.IndexOf(components, oldComponent);
+            using var pooledList = PooledObjectExtensions.Get(out List<Component> components);
+            gameObject.GetComponents(components);
+            var index = components.IndexOf(oldComponent);
             if (index < 0) {
                 Debug.LogWarning($"Component {oldComponent.GetType()} is not found in the GameObject.");
                 return null;
@@ -46,7 +47,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 
         public static bool IsRequired(Type type, Type checkType, Type capableType = null) {
             if (!dependents.TryGetValue(type, out var types)) {
-                var temp = new List<Type>();
+                using var pooledList = PooledObjectExtensions.Get(out List<Type> temp);
                 foreach (var requireComponent in type.GetCustomAttributes<RequireComponent>(true)) {
                     if (requireComponent.m_Type0 != null) temp.Add(requireComponent.m_Type0);
                     if (requireComponent.m_Type1 != null) temp.Add(requireComponent.m_Type1);
@@ -66,9 +67,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
 #else
             int sceneCount = SceneManager.sceneCount;
 #endif
-            var roots = new List<GameObject>();
-            var temp = new List<Component>();
-            var stack = new Stack<Transform>();
+            using var pooledStack = PooledObjectExtensions.Get(out Stack<Transform> stack);
+            using (PooledObjectExtensions.Get(out List<GameObject> roots))
             for (int i = 0; i < sceneCount; i++) {
                 SceneManager.GetSceneAt(i).GetRootGameObjects(roots);
                 foreach (var root in roots)
@@ -79,6 +79,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (prefabStage != null)
                 stack.Push(prefabStage.prefabContentsRoot.transform);
 #endif
+            using (PooledObjectExtensions.Get(out List<Component> temp))
             while (stack.TryPop(out var current)) {
                 for (int i = current.childCount - 1; i >= 0; i--)
                     stack.Push(current.GetChild(i));
@@ -123,7 +124,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             return true;
         }
 
-        ComponentReplacer(GameObject sourceGameObject, Component[] components, int index) {
+        ComponentReplacer(GameObject sourceGameObject, List<Component> components, int index) {
             this.sourceGameObject = sourceGameObject;
             componentsInGameObject = components;
             componentIndex = index;
@@ -131,7 +132,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             componentType = component.GetType();
             foreach (var c in componentsInGameObject) {
                 if (c == null || c == component || !IsRequired(c.GetType(), componentType)) continue;
-                int i = Array.IndexOf(componentsInGameObject, c);
+                int i = componentsInGameObject.IndexOf(c);
                 if (i >= 0) downstreams.Add(new ComponentReplacer(sourceGameObject, componentsInGameObject, i));
                 else Debug.LogWarning($"Component {c.GetType()} is required by {componentType} but not found in the same GameObject.");
             }
@@ -144,7 +145,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (temporaryGameObject != null) return;
             temporaryGameObject = Instantiate(sourceGameObject);
             temporaryGameObject.hideFlags = HideFlags.HideAndDontSave;
-            var queue = new Queue<ComponentReplacer>();
+            using var pooledQueue = PooledObjectExtensions.Get(out Queue<ComponentReplacer> queue);
             queue.Enqueue(this);
             componentsInTemporary = temporaryGameObject.GetComponents<Component>();
             while (queue.TryDequeue(out var current)) {
@@ -154,8 +155,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         void DestroyDependents() {
-            var stack = new Stack<ComponentReplacer>();
-            var queue = new Queue<ComponentReplacer>();
+            using var pooledStack = PooledObjectExtensions.Get(out Stack<ComponentReplacer> stack);
+            using var pooledQueue = PooledObjectExtensions.Get(out Queue<ComponentReplacer> queue);
             queue.Enqueue(this);
             while (queue.TryDequeue(out var current)) {
                 stack.Push(current);
@@ -167,7 +168,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         void RestoreDependents(Component newAddedComponent = null) {
-            var stack = new Stack<ComponentReplacer>();
+            using var pooledStack = PooledObjectExtensions.Get(out Stack<ComponentReplacer> stack);
             stack.Push(this);
             while (stack.TryPop(out var current)) {
                 foreach (var downstream in current.downstreams) stack.Push(downstream);
@@ -200,7 +201,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             if (temporaryGameObject == null) return;
             DestroyImmediate(temporaryGameObject);
             temporaryGameObject = null;
-            var queue = new Queue<ComponentReplacer>();
+            using var pooledQueue = PooledObjectExtensions.Get(out Queue<ComponentReplacer> queue);
             queue.Enqueue(this);
             while (queue.TryDequeue(out var current)) {
                 foreach (var downstream in current.downstreams) queue.Enqueue(downstream);

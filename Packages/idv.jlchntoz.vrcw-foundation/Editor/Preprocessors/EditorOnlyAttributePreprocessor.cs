@@ -13,6 +13,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         public void OnPreprocess(Scene scene) {
             var hasAttributeCache = new Dictionary<Type, bool>();
             foreach (var behaviour in scene.IterateAllComponents<MonoBehaviour>()) {
+                if (behaviour == null) continue;
                 var type = behaviour.GetType();
                 if (!hasAttributeCache.TryGetValue(type, out var hasAttribute)) {
                     hasAttribute = type.GetCustomAttribute<EditorOnlyAttribute>() != null;

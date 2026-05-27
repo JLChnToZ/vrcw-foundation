@@ -15,6 +15,8 @@ namespace JLChnToZ.VRC.Foundation {
         public string RegexPattern { get; set; }
         public string RegexPatternSourceProperty { get; set; }
         public string TargetUrlArray { get; set; }
+        public bool IndexOnly { get; set; }
+        public bool ClearSourceArray { get; set; }
 
         public GeneratedUrlMapperAttribute() { }
     }
