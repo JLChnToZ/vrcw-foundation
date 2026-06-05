@@ -37,6 +37,12 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
         public static GUIContent GetLocalizedContent(this EditorI18N i18n, string key, params object[] format) =>
             GetTempContent(string.Format(i18n.GetOrDefault(key), format), i18n[$"{key}:tooltip"]);
 
+        /// <inheritdoc cref="GetLocalizedContent(EditorI18N, string, object[])"/>
+        /// <param name="content">The content to be filled with localized text and tooltip.</param>
+        public static void GetLocalizedContent(this EditorI18N i18n, string key, GUIContent content) {
+            content.text = i18n.GetOrDefault(key);
+            content.tooltip = i18n[$"{key}:tooltip"];
+        }
 
         /// <inheritdoc cref="DisplayLocalizedDialog1(EditorI18N, string, object[])"/>
         public static void DisplayLocalizedDialog1(this EditorI18N i18n, string key) =>

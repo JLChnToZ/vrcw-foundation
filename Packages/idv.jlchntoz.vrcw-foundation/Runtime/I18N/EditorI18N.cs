@@ -96,7 +96,8 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         /// </summary>
         public string this[string key] {
             get {
-                if (i18nDict.TryGetValue(currentLanguage, out var langDict) &&
+                if (currentLanguage != null &&
+                    i18nDict.TryGetValue(currentLanguage, out var langDict) &&
                     langDict.TryGetValue(key, out var value))
                     return value;
                 if (i18nDict.TryGetValue(DEFAULT_LANGUAGE, out langDict) &&

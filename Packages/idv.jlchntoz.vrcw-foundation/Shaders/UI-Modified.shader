@@ -13,7 +13,7 @@
 
         [Header(Conditional Appearance in VRChat Camera Mirror)]
         [Toggle(_VRC_SUPPORT)] _VRCSupport ("Enable", Int) = 0
-        [EnumMask(Direct Look, VR Handheld Camera, Desktop Handheld Camera, Screenshot, VR Mirror, VR Handheld Camera in Mirror, _, VR Screenshot in Mirror, Desktop Mirror, _, Desktop Handheld Camera in Mirror, Desktop Screenshot in Mirror)]
+        [EnumMask(Direct Look, VR Handheld Camera, Desktop Handheld Camera, Screenshot, VR Mirror, VR Handheld Camera in Mirror, VR Face Mirror, VR Screenshot in Mirror, Desktop Mirror, Desktop Face Mirror, Desktop Handheld Camera in Mirror, Desktop Screenshot in Mirror)]
         _RenderMode ("Visible Modes", Int) = 4095
         [Toggle(_MIRROR_FLIP)] _MirrorFlip ("Flip in Mirror", Int) = 0
 
@@ -25,6 +25,10 @@
         [Header(Screenspace Overlay Settings)]
         _CanvasRect ("Canvas Rect", Vector) = (0, 0, 1, 1)
         _AspectRatioMatch ("Aspect Ratio Match (0 = Width, 1 = Height)", Range(0, 1)) = 0.5
+
+        [Header(Distance Fade Settings)]
+        [Toggle(_DISTANCE_FADE)] _DistanceFade ("Enable Distance Fade", Int) = 0
+        _DistanceFadeParams ("Distance Fade Params (x: start, y: end)", Vector) = (0, 1, 0, 0)
 
         [Header(Render Pipeline Settings)]
         [Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0

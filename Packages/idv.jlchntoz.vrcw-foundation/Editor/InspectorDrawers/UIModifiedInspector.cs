@@ -12,6 +12,8 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
 
         MaterialEditor editor;
         MaterialProperty[] properties;
+        GUIContent[] twoContents;
+        float[] twoFloats;
 
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] props) {
             editor = materialEditor;
@@ -30,6 +32,9 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
             EditorGUILayout.Space();
 
             DrawVRCSettings();
+            EditorGUILayout.Space();
+
+            DrawDistanceFadeSettings();
             EditorGUILayout.Space();
 
             DrawExperimentalSettings();
@@ -183,6 +188,30 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
             }
         }
 
+        void DrawDistanceFadeSettings() {
+            var distanceFade = FindProperty("_DistanceFade");
+            if (distanceFade == null) return;
+            editor.ShaderProperty(distanceFade, locale.GetLocalizedContent("UIModified.DistanceFade.Enable"));
+            if (distanceFade.floatValue > 0.5f) {
+                var distanceFadeParams = FindProperty("_DistanceFadeParams");
+                if (distanceFadeParams != null) {
+                    MaterialEditor.BeginProperty(distanceFadeParams);
+                    using (var check = new EditorGUI.ChangeCheckScope()) {
+                        var value = distanceFadeParams.vectorValue;
+                        twoContents ??= new[] { new GUIContent(), new GUIContent() };
+                        twoFloats ??= new float[2];
+                        locale.GetLocalizedContent("UIModified.DistanceFade.Start", twoContents[0]);
+                        locale.GetLocalizedContent("UIModified.DistanceFade.End", twoContents[1]);
+                        twoFloats[0] = value.x;
+                        twoFloats[1] = value.y;
+                        EditorGUI.MultiFloatField(EditorGUILayout.GetControlRect(false), twoContents, twoFloats);
+                        if (check.changed) distanceFadeParams.vectorValue = new Vector4(twoFloats[0], twoFloats[1], value.z, value.w);
+                    }
+                    MaterialEditor.EndProperty();
+                }
+            }
+        }
+
         MaterialProperty FindProperty(string name) => FindProperty(name, properties, false);
 
         bool FindAndDrawProperty(string name, string displayName = null) {
@@ -206,6 +235,7 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
             SetKeywordByProperty(mat, "_DoubleSided", "_DOUBLE_SIDED");
             SetKeywordByProperty(mat, "_Billboard", "_BILLBOARD");
             SetKeywordByProperty(mat, "_ScreenSpaceOverlay", "_SCREENSPACE_OVERLAY");
+            SetKeywordByProperty(mat, "_DistanceFade", "_DISTANCE_FADE");
         }
 
         static void SetKeywordByProperty(Material mat, string propertyName, string keyword) {

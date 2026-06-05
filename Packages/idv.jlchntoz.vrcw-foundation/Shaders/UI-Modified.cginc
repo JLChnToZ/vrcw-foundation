@@ -5,9 +5,10 @@
 
 #pragma multi_compile_local _ UNITY_UI_CLIP_RECT
 #pragma multi_compile_local_fragment _ UNITY_UI_ALPHACLIP
-#pragma shader_feature_local _ _VRC_SUPPORT
+#pragma shader_feature_local_vertex _ _VRC_SUPPORT
 #pragma shader_feature_local _ _MIRROR_FLIP
 #pragma shader_feature_local _ _SCREENSPACE_OVERLAY _BILLBOARD _DOUBLE_SIDED
+#pragma shader_feature_local_fragment _ _DISTANCE_FADE
 
 #if defined(_MIRROR_FLIP) && !defined(_VRC_SUPPORT)
 #define _VRC_SUPPORT
@@ -24,6 +25,7 @@
 #ifdef _SCREENSPACE_OVERLAY
 #undef _DOUBLE_SIDED
 #undef _BILLBOARD
+#undef _DISTANCE_FADE
 #endif
 #ifdef _DOUBLE_SIDED
 #undef _BILLBOARD
@@ -91,6 +93,10 @@ float4 _MainTex_ST;
 
 #ifndef GEOM_SUPPORT
     int _Cull;
+#endif
+
+#ifdef _DISTANCE_FADE
+    float2 _DistanceFadeParams;
 #endif
 
 v2f vert(appdata_t v, uint vertID : SV_VertexID) {
@@ -240,6 +246,10 @@ half4 frag(
         color *= float4(1, 1, 1, saturate((sigDist - threshold) * max(dot(sdfUnit, 0.5 / fwidth(texcoord)), 1) + threshold)) + _TextureSampleAdd;
     #else
         color *= tex2D(_MainTex, texcoord) + _TextureSampleAdd;
+    #endif
+
+    #ifdef _DISTANCE_FADE
+        color.a *= smoothstep(_DistanceFadeParams.x, _DistanceFadeParams.y, LinearEyeDepth(IN.vertex.z / IN.vertex.w));
     #endif
 
     #ifdef UNITY_UI_CLIP_RECT
