@@ -89,44 +89,7 @@
         }
     }
 
-    SubShader {
-        Tags {
-            "Queue" = "Transparent"
-            "IgnoreProjector" = "True"
-            "RenderType" = "Transparent"
-            "PreviewType" = "Plane"
-            "CanUseSpriteAtlas" = "True"
-        }
+    Fallback "UI/Modified (No Geometry)"
 
-        Stencil {
-            Ref [_Stencil]
-            Comp [_StencilComp]
-            Pass [_StencilOp]
-            ReadMask [_StencilReadMask]
-            WriteMask [_StencilWriteMask]
-        }
-
-        LOD 200
-        Cull Off
-        Lighting Off
-        ZWrite [_ZWrite]
-        ZTest [unity_GUIZTestMode]
-        Blend SrcAlpha OneMinusSrcAlpha
-        ColorMask [_ColorMask]
-
-        Pass {
-            Name "Fallback"
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma target 3.5
-            #pragma shader_feature_local_fragment __ SDF MSDF
-            #pragma shader_feature_local_fragment __ MSDF_OVERRIDE
-            #include "./UI-Modified.cginc"
-            ENDCG
-        }
-    }
-
-    Fallback "UI/Default"
     CustomEditor "JLChnToZ.VRCW.Foundation.Editor.UIModifiedInspector"
 }

@@ -1,4 +1,4 @@
-﻿Shader "TextMeshPro/Custom SDF" {
+﻿Shader "TextMeshPro/Custom SDF (No Geometry)" {
     Properties {
         [HDR] [MainColor] _FaceColor ("Face Color", Color) = (1, 1, 1, 1)
 
@@ -53,6 +53,7 @@
             "IgnoreProjector" = "True"
             "RenderType" = "Transparent"
             "PreviewType" = "Plane"
+            "CanUseSpriteAtlas" = "True"
         }
 
         Stencil {
@@ -63,32 +64,28 @@
             WriteMask [_StencilWriteMask]
         }
 
-        LOD 300
-        Cull [_CullMode]
+        LOD 200
+        Cull Off
         Lighting Off
         ZWrite [_ZWrite]
         ZTest [unity_GUIZTestMode]
         Fog { Mode Off }
-        Blend One OneMinusSrcAlpha
+        Blend SrcAlpha OneMinusSrcAlpha
         ColorMask [_ColorMask]
 
         Pass {
-            Name "Full"
+            Name "Fallback"
             CGPROGRAM
             #pragma vertex vert
-            #pragma geometry geom
             #pragma fragment frag
-            #pragma target 4.0
-            // Exclude renderers incompatible with the geometry stage when writing to screen
-            #pragma exclude_renderers gles gles3 glcore metal
-            #define GEOM_SUPPORT
+            #pragma target 3.5
             #define TMPRO_SDF 1
             #include "./UI-Modified.cginc"
             ENDCG
         }
     }
 
-    Fallback "TextMeshPro/Custom SDF (No Geometry)"
+    Fallback "TextMeshPro/Mobile/Distance Field"
 
     CustomEditor "JLChnToZ.VRCW.Foundation.Editor.UIModifiedInspector"
 }

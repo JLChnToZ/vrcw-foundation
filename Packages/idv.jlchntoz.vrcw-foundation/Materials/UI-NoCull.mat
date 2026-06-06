@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: UI-NoCull
-  m_Shader: {fileID: 4800000, guid: 1f57d898a11c4a44c9cbe5e46450134d, type: 3}
+  m_Shader: {fileID: 4800000, guid: 0ccec7a4a6c600243a8be57be5903b61, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -37,6 +37,7 @@ Material:
     - _Billboard: 0
     - _ColorMask: 15
     - _Cull: 2
+    - _DistanceFade: 0
     - _DoubleSided: 0
     - _MirrorFlip: 0
     - _OverrideMSDF: 0
@@ -58,4 +59,5 @@ Material:
     m_Colors:
     - _CanvasRect: {r: 0, g: 0, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _DistanceFadeParams: {r: 0, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []

@@ -1,15 +1,15 @@
-﻿Shader "TextMeshPro/Custom SDF" {
+﻿Shader "UI/Modified (No Geometry)" {
     Properties {
-        [HDR] [MainColor] _FaceColor ("Face Color", Color) = (1, 1, 1, 1)
+        [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
+        _Color ("Color Tint", Color) = (1,1,1,1)
 
-        [Header(Properties Controlled by TextMeshPro)]
-        [NoScaleOffset] _MainTex ("Font Atlas", 2D) = "black" {}
-        _TextureWidth ("Texture Width", Float) = 512
-        _TextureHeight ("Texture Height", Float) = 512
-        _GradientScale ("Gradient Scale", Float) = 5.0
-        _WeightNormal ("Weight Normal", Float) = 0
-        _WeightBold ("Weight Bold", Float) = 0.5
-        _ScaleRatioA ("Scale Ratio A", Float) = 1
+        [Header(SDF Settings)]
+        [Toggle(SDF)] _UseSDF ("Input is SDF", Float) = 0
+        [Toggle(MSDF)] _UseMSDF ("Input is MSDF", Float) = 0
+        [Toggle(MSDF_OVERRIDE)] _OverrideMSDF ("Use Override Texture", Float) = 0
+        [NoScaleOffset] _MSDFTex ("Override Texture", 2D) = "black" {}
+		_PixelRange ("Pixel Range", Float) = 4.0
+        _SDFThreshold ("Threshold", Range(0, 1)) = 0.5
 
         [Header(Conditional Appearance in VRChat Camera Mirror)]
         [Toggle(_VRC_SUPPORT)] _VRCSupport ("Enable", Int) = 0
@@ -32,7 +32,7 @@
 
         [Header(Render Pipeline Settings)]
         [Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0
-        [Enum(UnityEngine.Rendering.CullMode)] _CullMode ("Cull Mode", Int) = 2
+        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Int) = 2
         [EnumMask(UnityEngine.Rendering.ColorWriteMask)] _ColorMask ("Color Mask", Int) = 15
 
         [Header(Stencil Settings)]
@@ -53,6 +53,7 @@
             "IgnoreProjector" = "True"
             "RenderType" = "Transparent"
             "PreviewType" = "Plane"
+            "CanUseSpriteAtlas" = "True"
         }
 
         Stencil {
@@ -63,32 +64,27 @@
             WriteMask [_StencilWriteMask]
         }
 
-        LOD 300
-        Cull [_CullMode]
+        LOD 200
+        Cull Off
         Lighting Off
         ZWrite [_ZWrite]
         ZTest [unity_GUIZTestMode]
-        Fog { Mode Off }
-        Blend One OneMinusSrcAlpha
+        Blend SrcAlpha OneMinusSrcAlpha
         ColorMask [_ColorMask]
 
         Pass {
-            Name "Full"
+            Name "Fallback"
             CGPROGRAM
             #pragma vertex vert
-            #pragma geometry geom
             #pragma fragment frag
-            #pragma target 4.0
-            // Exclude renderers incompatible with the geometry stage when writing to screen
-            #pragma exclude_renderers gles gles3 glcore metal
-            #define GEOM_SUPPORT
-            #define TMPRO_SDF 1
+            #pragma target 3.5
+            #pragma shader_feature_local_fragment __ SDF MSDF
+            #pragma shader_feature_local_fragment __ MSDF_OVERRIDE
             #include "./UI-Modified.cginc"
             ENDCG
         }
     }
 
-    Fallback "TextMeshPro/Custom SDF (No Geometry)"
-
+    Fallback "UI/Default"
     CustomEditor "JLChnToZ.VRCW.Foundation.Editor.UIModifiedInspector"
 }

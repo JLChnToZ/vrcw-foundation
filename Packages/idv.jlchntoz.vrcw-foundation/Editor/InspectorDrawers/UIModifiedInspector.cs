@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using JLChnToZ.VRC.Foundation.Editors;
@@ -6,6 +7,11 @@ using JLChnToZ.VRC.Foundation.I18N.Editors;
 
 namespace JLChnToZ.VRCW.Foundation.Editor {
     public class UIModifiedInspector : ShaderGUI {
+        static bool hasInitialized;
+        static readonly Dictionary<Shader, Shader> geometryShaderMap = new Dictionary<Shader, Shader>();
+        static readonly Dictionary<Shader, Shader> nonGeometryShaderMap = new Dictionary<Shader, Shader>();
+        static readonly Dictionary<int, string> materialToKeywordMap = new Dictionary<int, string>();
+        static readonly HashSet<int> keywordsRequiringGeometry = new HashSet<int>();
         static readonly string[] sdfModes = new string[3];
         static readonly string[] specialRenderModes = new string[4];
         EditorI18N locale;
@@ -14,6 +20,38 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
         MaterialProperty[] properties;
         GUIContent[] twoContents;
         float[] twoFloats;
+
+        static void Initialize() {
+            if (hasInitialized) return;
+            hasInitialized = true;
+            AddKeywordMapping("_UseSDF", "SDF");
+            AddKeywordMapping("_UseMSDF", "MSDF");
+            AddKeywordMapping("_OverrideMSDF", "MSDF_OVERRIDE");
+            AddKeywordMapping("_UseUIAlphaClip", "UNITY_UI_ALPHACLIP");
+            AddKeywordMapping("_VRCSupport", "_VRC_SUPPORT");
+            AddKeywordMapping("_MirrorFlip", "_MIRROR_FLIP", true);
+            AddKeywordMapping("_DoubleSided", "_DOUBLE_SIDED", true);
+            AddKeywordMapping("_Billboard", "_BILLBOARD");
+            AddKeywordMapping("_ScreenSpaceOverlay", "_SCREENSPACE_OVERLAY");
+            AddKeywordMapping("_DistanceFade", "_DISTANCE_FADE");
+            foreach (var guid in AssetDatabase.FindAssets("t:Shader", new[] { "Assets", "Packages" })) {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!path.EndsWith("-NoGeom.shader")) continue;
+                var nonGeomShader = AssetDatabase.LoadAssetAtPath<Shader>(path);
+                var geomPath = path.Replace("-NoGeom", "");
+                var geomShader = AssetDatabase.LoadAssetAtPath<Shader>(geomPath);
+                if (geomShader != null) {
+                    geometryShaderMap[nonGeomShader] = geomShader;
+                    nonGeometryShaderMap[geomShader] = nonGeomShader;
+                }
+            }
+        }
+
+        static void AddKeywordMapping(string propertyName, string keyword, bool requiresGeometry = false) {
+            var id = Shader.PropertyToID(propertyName);
+            materialToKeywordMap[id] = keyword;
+            if (requiresGeometry) keywordsRequiringGeometry.Add(id);
+        }
 
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] props) {
             editor = materialEditor;
@@ -60,7 +98,7 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
                 foreach (var obj in editor.targets) {
                     var mat = obj as Material;
                     if (mat == null) continue;
-                    UpdateKeywords(mat);
+                    UpdateKeywordsAndShaders(mat);
                 }
             }
         }
@@ -225,17 +263,22 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
             return true;
         }
 
-        static void UpdateKeywords(Material mat) {
-            SetKeywordByProperty(mat, "_UseSDF", "SDF");
-            SetKeywordByProperty(mat, "_UseMSDF", "MSDF");
-            SetKeywordByProperty(mat, "_OverrideMSDF", "MSDF_OVERRIDE");
-            SetKeywordByProperty(mat, "_UseUIAlphaClip", "UNITY_UI_ALPHACLIP");
-            SetKeywordByProperty(mat, "_VRCSupport", "_VRC_SUPPORT");
-            SetKeywordByProperty(mat, "_MirrorFlip", "_MIRROR_FLIP");
-            SetKeywordByProperty(mat, "_DoubleSided", "_DOUBLE_SIDED");
-            SetKeywordByProperty(mat, "_Billboard", "_BILLBOARD");
-            SetKeywordByProperty(mat, "_ScreenSpaceOverlay", "_SCREENSPACE_OVERLAY");
-            SetKeywordByProperty(mat, "_DistanceFade", "_DISTANCE_FADE");
+        static void UpdateKeywordsAndShaders(Material mat) {
+            Initialize();
+            bool useGeom = false;
+            foreach (var (id, keyword) in materialToKeywordMap) {
+                if (mat.HasProperty(id) && mat.GetFloat(id) > 0.5f) {
+                    mat.EnableKeyword(keyword);
+                    if (keywordsRequiringGeometry.Contains(id)) useGeom = true;
+                    continue;
+                }
+                mat.DisableKeyword(keyword);
+            }
+            var currentShader = mat.shader;
+            if ((useGeom ? geometryShaderMap : nonGeometryShaderMap).TryGetValue(currentShader, out var targetShader)) {
+                if (mat.parent != null) mat.parent = null;
+                mat.shader = targetShader;
+            }
         }
 
         static void SetKeywordByProperty(Material mat, string propertyName, string keyword) {
