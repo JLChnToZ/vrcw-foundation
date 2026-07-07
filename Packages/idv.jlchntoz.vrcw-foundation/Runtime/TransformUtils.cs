@@ -32,15 +32,19 @@ namespace JLChnToZ.VRC.Foundation {
 
         public static bool NormalizeDimensions(this RectTransform transform, Axis axis, bool undo = true) {
             var localScale = transform.localScale;
+            if (IsUnsafeNumber(localScale)) return false;
             var localSize = transform.sizeDelta;
+            if (IsUnsafeNumber(localSize)) return false;
             float targetAspect = GetGlobalAspect(transform, localSize);
+            if (IsUnsafeNumber(targetAspect)) return false;
             var parentAspect = GetGlobalAspect(transform.parent, localScale);
-            if (Mathf.Approximately(parentAspect, 1F)) return false;
+            if (IsUnsafeNumber(parentAspect) || Mathf.Approximately(parentAspect, 1F)) return false;
             switch (axis) {
                 case Axis.Horizontal: localScale.y *= parentAspect; break;
                 case Axis.Vertical: localScale.x /= parentAspect; break;
                 default: return false;
             }
+            if (IsUnsafeNumber(localScale)) return false;
 #if UNITY_EDITOR && !COMPILER_UDONSHARP
             if (undo) Undo.RecordObject(transform, "Normalize Canvas Transform");
 #endif
@@ -52,9 +56,14 @@ namespace JLChnToZ.VRC.Foundation {
                 case Axis.Vertical: localSize.x = localSize.y * targetAspect; break;
                 default: return true;
             }
+            if (IsUnsafeNumber(localSize)) return true;
             transform.sizeDelta = localSize;
             return true;
         }
+
+        static bool IsUnsafeNumber(float value) => float.IsNaN(value) || float.IsInfinity(value) || Mathf.Approximately(value, 0F);
+
+        static bool IsUnsafeNumber(Vector2 value) => IsUnsafeNumber(value.x) || IsUnsafeNumber(value.y);
 
         public static bool SynchronizeColliderWithRect(this RectTransform transform, BoxCollider collider, bool undo = true) {
             var rect = transform.rect;
