@@ -203,7 +203,7 @@ void geom(triangle v2f input[3], inout TriangleStream<v2f> triStream) {
 half4 frag(
     v2f IN
 #ifndef GEOM_SUPPORT
-    , fixed facing : VFACE
+    , bool isFrontFace : SV_IsFrontFace
 #endif
 ) : SV_Target {
     #if TMPRO_SDF
@@ -211,8 +211,8 @@ half4 frag(
     #endif
     #ifndef GEOM_SUPPORT
         switch (_Cull) {
-            case 1: if (facing > 0) discard; break;
-            case 2: if (facing < 0) discard; break;
+            case 1: if (isFrontFace) discard; break;
+            case 2: if (!isFrontFace) discard; break;
         }
     #endif
     float4 color = IN.color;
