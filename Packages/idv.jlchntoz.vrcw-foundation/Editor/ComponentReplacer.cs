@@ -12,7 +12,6 @@ namespace JLChnToZ.VRC.Foundation.Editors {
     public class ComponentReplacer {
         static readonly Dictionary<Component, List<(Component, string)>> references = new Dictionary<Component, List<(Component, string)>>();
         static readonly HashSet<(Type, string)> blackListedPaths = new HashSet<(Type, string)>();
-        static readonly Dictionary<Type, Type[]> dependents = new Dictionary<Type, Type[]>();
         readonly List<ComponentReplacer> downstreams = new List<ComponentReplacer>();
         readonly Type componentType;
         readonly GameObject sourceGameObject;
@@ -45,21 +44,8 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             return newComponent;
         }
 
-        public static bool IsRequired(Type type, Type checkType, Type capableType = null) {
-            if (!dependents.TryGetValue(type, out var types)) {
-                using var pooledList = PooledObjectExtensions.Get(out List<Type> temp);
-                foreach (var requireComponent in type.GetCustomAttributes<RequireComponent>(true)) {
-                    if (requireComponent.m_Type0 != null) temp.Add(requireComponent.m_Type0);
-                    if (requireComponent.m_Type1 != null) temp.Add(requireComponent.m_Type1);
-                    if (requireComponent.m_Type2 != null) temp.Add(requireComponent.m_Type2);
-                }
-                dependents[type] = types = temp.ToArray();
-            }
-            foreach (var t in types)
-                if (t.IsAssignableFrom(checkType) && (capableType == null || !t.IsAssignableFrom(capableType)))
-                    return true;
-            return false;
-        }
+        [Obsolete("Use DependencyUtils.IsRequired instead.")]
+        public static bool IsRequired(Type type, Type checkType, Type capableType = null) => DependencyUtils.IsRequired(type, checkType, capableType);
 
         public static void InitAllComponents() {
 #if UNITY_2022_2_OR_NEWER
@@ -131,7 +117,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             var component = components[index];
             componentType = component.GetType();
             foreach (var c in componentsInGameObject) {
-                if (c == null || c == component || !IsRequired(c.GetType(), componentType)) continue;
+                if (c == null || c == component || !DependencyUtils.IsRequired(c.GetType(), componentType)) continue;
                 int i = componentsInGameObject.IndexOf(c);
                 if (i >= 0) downstreams.Add(new ComponentReplacer(sourceGameObject, componentsInGameObject, i));
                 else Debug.LogWarning($"Component {c.GetType()} is required by {componentType} but not found in the same GameObject.");

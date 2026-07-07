@@ -6,8 +6,9 @@ using UnityEngine.SceneManagement;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
-#if VRC_SDK_VRCSDK3
-using VRC.SDK3.Editor;
+#if UDONSHARP
+using UdonSharp;
+using UdonSharpEditor;
 #endif
 
 using UnityObject = UnityEngine.Object;
@@ -58,6 +59,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         processor.OnPreprocess(scene);
                     else if (preprocessor is ISelfPreProcess selfProcessor)
                         selfProcessor.PreProcess();
+#if UDONSHARP
+                    if (preprocessor is UdonSharpBehaviour usb)
+                        UdonSharpEditorUtility.CopyProxyToUdon(usb);
+#endif
                 } catch (Exception e) {
                     Debug.LogError($"Error while processing scene with {preprocessor.GetType().Name}: {e.Message}");
                 }

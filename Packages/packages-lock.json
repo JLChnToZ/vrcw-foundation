@@ -207,6 +207,14 @@
         "com.unity.ugui": "1.0.0"
       }
     },
+    "com.vrchat.core.bootstrap": {
+      "version": "file:com.vrchat.core.bootstrap",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "2.0.2"
+      }
+    },
     "com.vrchat.core.vpm-resolver": {
       "version": "file:com.vrchat.core.vpm-resolver",
       "depth": 0,
@@ -231,6 +239,14 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {}
+    },
+    "idv.jlchntoz.unimsdf": {
+      "version": "file:UniMSDF",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.burst": "1.6.1"
+      }
     },
     "idv.jlchntoz.vrcw-foundation": {
       "version": "file:idv.jlchntoz.vrcw-foundation",
