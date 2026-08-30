@@ -77,7 +77,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
         /// The index of the current language.
         /// </summary>
         public int LanguageIndex {
-            get => Array.IndexOf(languageKeys, currentLanguage);
+            get => languageKeys != null ? Array.IndexOf(languageKeys, currentLanguage) : -1;
             set => CurrentLanguage = languageKeys[value];
         }
 

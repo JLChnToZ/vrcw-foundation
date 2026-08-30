@@ -22,15 +22,6 @@ namespace JLChnToZ.VRC.Foundation {
         [NonSerialized] bool scaleChanging;
         [NonSerialized] Vector2 lastLocalScale;
 
-        static float GetGlobalAspect(Transform transform, Vector2 size) {
-            if (transform == null) return size.x / size.y;
-            Span<Vector3> v = stackalloc Vector3[2];
-            v[0].x = size.x;
-            v[1].y = size.y;
-            transform.TransformVectors(v);
-            return v[0].magnitude / v[1].magnitude;
-        }
-
         static void SavePrefabChanges(UnityObject obj) {
             if (PrefabUtility.IsPartOfPrefabInstance(obj))
                 PrefabUtility.RecordPrefabInstancePropertyModifications(obj);   

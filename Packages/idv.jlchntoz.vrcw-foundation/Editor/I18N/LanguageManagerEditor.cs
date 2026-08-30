@@ -25,18 +25,23 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
             if (savedLanguageKeyObject != null) {
                 var targetList = savedLanguageKeyObject.targetObjects;
                 if (targetList.Length == currentList.Length)
-                using (HashSetPool<UnityObject>.Get(out var currentSet)) {
-                    currentSet.UnionWith(savedLanguageKeyObject.targetObjects);
-                    var allMatch = true;
-                    foreach (var lm in currentList) {
-                        if (!currentSet.Contains(lm)) {
-                            allMatch = false;
-                            break;
+                    using (HashSetPool<UnityObject>.Get(out var currentSet)) {
+                        currentSet.UnionWith(savedLanguageKeyObject.targetObjects);
+                        var allMatch = true;
+                        foreach (var lm in currentList) {
+                            if (!currentSet.Contains(lm)) {
+                                allMatch = false;
+                                break;
+                            }
                         }
+                        if (allMatch) return false;
                     }
-                    if (allMatch) return false;
-                }
                 savedLanguageKeyObject.Dispose();
+            }
+            if (currentList.Length == 0) {
+                savedLanguageKeyObject = null;
+                savedLanguageKeyProperty = null;
+                return false;
             }
             savedLanguageKeyObject = new SerializedObject(currentList);
             savedLanguageKeyProperty = savedLanguageKeyObject.FindProperty("savedLanguageKey");
@@ -89,6 +94,7 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                 }
             }
             serializedObject.ApplyModifiedProperties();
+            if (savedLanguageKeyObject == null) return;
             savedLanguageKeyObject.Update();
             EditorGUILayout.Space();
             using (var changed = new EditorGUI.ChangeCheckScope()) {

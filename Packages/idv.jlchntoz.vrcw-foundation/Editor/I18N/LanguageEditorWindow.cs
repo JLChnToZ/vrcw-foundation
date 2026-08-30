@@ -101,9 +101,11 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                 var additionalJson = so.FindProperty("languageJson");
                 if (!string.IsNullOrEmpty(additionalJson.stringValue))
                     LanguageManager.ParseFromJson(
-                        additionalJson.stringValue, null, null, allKeys, currentLanguageMap
+                        additionalJson.stringValue, null, null, currentLanguageMap
                     );
             }
+            foreach (var lang in currentLanguageMap.Values)
+                allKeys.UnionWith(lang.languages.Keys);
             RefreshIndexes();
         }
 
@@ -123,9 +125,11 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                 var textAsset = langPacks.GetArrayElementAtIndex(i).objectReferenceValue as TextAsset;
                 if (textAsset != null)
                     LanguageManager.ParseFromJson(
-                        textAsset.text, keyStack, null, allKeys, defaultLanguageMap
+                        textAsset.text, keyStack, null, defaultLanguageMap
                     );
             }
+            foreach (var lang in defaultLanguageMap.Values)
+                allKeys.UnionWith(lang.languages.Keys);
         }
 
         void RefreshIndexes(bool processDefaultMap = false, bool processCurrentMap = false) {
@@ -205,6 +209,7 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                                 vrcName = EditorGUILayout.TextField(i18n.GetLocalizedContent("LanguageEditor.vrc_name"), vrcName);
                                 if (changed.changed) GetOrCreateLanguageEntry().vrcName = vrcName;
                             }
+                            DrawFallbackLanguages();
                             DrawTimeZones();
                             EditorGUILayout.Space();
                             viewWidth = vert.rect.width;
@@ -249,6 +254,11 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
         }
 
         void DrawLangList(Rect rect, int index, bool isActive, bool isFocused) {
+            var evt = Event.current;
+            if (evt.type == EventType.MouseDown && rect.Contains(evt.mousePosition) && langListSelect.index != index) {
+                langListSelect.index = index;
+                OnLangSelect(langListSelect);
+            }
             var value = langList[index];
             bool canRemove = currentLanguageMap.ContainsKey(value);
             var valueRect = rect;
@@ -317,6 +327,27 @@ namespace JLChnToZ.VRC.Foundation.I18N.Editors {
                     }
                 }
             }
+        }
+
+        void DrawFallbackLanguages() {
+            var fallback = selectedEntry?.fallback ?? selectedDefaultEntry?.fallback;
+            var rect = EditorGUI.PrefixLabel(EditorGUILayout.GetControlRect(), i18n.GetLocalizedContent("LanguageEditor.fallback"));
+            var fallbackEntry = fallback != null && (currentLanguageMap.TryGetValue(fallback, out LanguageEntry entry) || defaultLanguageMap.TryGetValue(fallback, out entry)) ? entry : null;
+            if (GUI.Button(rect, fallbackEntry?.name ?? fallback ?? "-", EditorStyles.popup)) {
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("-"), fallback == null, FallbackLangSelect, null);
+                foreach (var kv in currentLanguageMap)
+                    menu.AddItem(new GUIContent(kv.Value.name ?? kv.Key), kv.Key == fallback, FallbackLangSelect, kv.Key);
+                foreach (var kv in defaultLanguageMap)
+                    if (!currentLanguageMap.ContainsKey(kv.Key))
+                        menu.AddItem(new GUIContent(kv.Value.name ?? kv.Key), kv.Key == fallback, FallbackLangSelect, kv.Key);
+                menu.DropDown(rect);
+            }
+        }
+
+        void FallbackLangSelect(object context) {
+            GetOrCreateLanguageEntry().fallback = context as string;
+            OnLangSelect();
         }
 
         void DrawLangKeys(Rect rect, int index, bool isActive, bool isFocused) {

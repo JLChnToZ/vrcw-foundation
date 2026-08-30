@@ -156,7 +156,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             foreach (var languageManager in others) {
                 if (!Utilities.IsValid(languageManager)) continue;
                 var jsonFile = languageManager.languageJsonFiles;
-                if (Utilities.IsValid(jsonFile)) 
+                if (Utilities.IsValid(jsonFile))
                     foreach (var textAsset in jsonFile) {
                         var text = textAsset.text;
                         if (!string.IsNullOrEmpty(text))
@@ -169,10 +169,10 @@ namespace JLChnToZ.VRC.Foundation.I18N {
             var langMap = new Dictionary<string, LanguageEntry>();
             var defaultLanguageMapping = new Dictionary<string, string>();
             var keyStack = new List<object>();
-            var allLanguageKeys = new HashSet<string>();
             foreach (var json in jsonTexts)
-                ParseFromJson(json, keyStack, defaultLanguageMapping, allLanguageKeys, langMap);
+                ParseFromJson(json, keyStack, defaultLanguageMapping, langMap);
             languages = new DataDictionary();
+            var queriedLanguages = new HashSet<string>();
             foreach (var kv in langMap) {
                 var langDict = new DataDictionary();
                 var lang = kv.Value;
@@ -191,25 +191,33 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                 }
                 foreach (var langEntry in lang.languages)
                     langDict[langEntry.Key] = langEntry.Value;
-                if (defaultLanguageMapping != null)
-                    foreach (var defaultLang in defaultLanguageMapping)
-                        if (!langDict.ContainsKey(defaultLang.Key))
-                            langDict[defaultLang.Key] = defaultLang.Value;
+                foreach (var langKey in defaultLanguageMapping.Keys) {
+                    if (langDict.ContainsKey(langKey)) continue;
+                    var currentLang = lang;
+                    while (!string.IsNullOrEmpty(currentLang.fallback) && queriedLanguages.Add(currentLang.fallback) && langMap.TryGetValue(currentLang.fallback, out currentLang))
+                        if (currentLang.languages.TryGetValue(langKey, out var fallbackValue)) {
+                            langDict[langKey] = fallbackValue;
+                            goto next;
+                        }
+                    if (defaultLanguageMapping.TryGetValue(langKey, out var defaultValue))
+                        langDict[langKey] = defaultValue;
+                    next:
+                    queriedLanguages.Clear();
+                }
                 languages[kv.Key] = langDict;
             }
             languageJson = "";
-            languageJsonFiles = new TextAsset[0];
+            languageJsonFiles = Array.Empty<TextAsset>();
         }
 
         internal static Dictionary<string, LanguageEntry> ParseFromJson(
             string json,
             List<object> keyStack = null,
             Dictionary<string, string> defaultLanguageMapping = null,
-            HashSet<string> allLanguageKeys = null,
             Dictionary<string, LanguageEntry> langMap = null
         ) {
-            if (!Utilities.IsValid(langMap)) langMap = new Dictionary<string, LanguageEntry>();
-            if (!Utilities.IsValid(keyStack)) keyStack = new List<object>();
+            langMap ??= new Dictionary<string, LanguageEntry>();
+            if (keyStack == null) keyStack = new List<object>();
             else keyStack.Clear();
             var reader = new JsonReader(json);
             LanguageEntry currentEntry = null;
@@ -237,34 +245,35 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                     case JsonToken.String:
                         switch (keyStack.Count) {
                             case 2: {
-                                if (Utilities.IsValid(currentEntry) && keyStack[1] is string key) {
-                                    var strValue = (string)reader.Value;
-                                    switch (key) {
-                                        case "_name":
-                                            currentEntry.name = strValue;
-                                            break;
-                                        case "_vrclang":
-                                            currentEntry.vrcName = strValue;
-                                            break;
-                                        case "_timezone":
-                                            currentEntry.timezones.Add(strValue);
-                                            break;
-                                        default:
-                                            currentEntry.languages[key] = strValue;
-                                            allLanguageKeys?.Add(key);
-                                            if (Utilities.IsValid(defaultLanguageMapping) &&
-                                                !defaultLanguageMapping.ContainsKey(key))
-                                                defaultLanguageMapping[key] = strValue;
-                                            break;
+                                    if (currentEntry != null && keyStack[1] is string key) {
+                                        var strValue = (string)reader.Value;
+                                        switch (key) {
+                                            case "_name":
+                                                currentEntry.name = strValue;
+                                                break;
+                                            case "_vrclang":
+                                                currentEntry.vrcName = strValue;
+                                                break;
+                                            case "_fallback":
+                                                currentEntry.fallback = strValue;
+                                                break;
+                                            case "_timezone":
+                                                currentEntry.timezones.Add(strValue);
+                                                break;
+                                            default:
+                                                currentEntry.languages[key] = strValue;
+                                                if (defaultLanguageMapping != null && !defaultLanguageMapping.ContainsKey(key))
+                                                    defaultLanguageMapping[key] = strValue;
+                                                break;
+                                        }
                                     }
+                                    break;
                                 }
-                                break;
-                            }
                             case 3: {
-                                if (Utilities.IsValid(currentEntry) && keyStack[1] is string key && key == "_timezone" && keyStack[2] is int)
-                                    currentEntry.timezones.Add(reader.Value.ToString());
-                                break;
-                            }
+                                    if (currentEntry != null && keyStack[1] is string key && key == "_timezone" && keyStack[2] is int)
+                                        currentEntry.timezones.Add(reader.Value.ToString());
+                                    break;
+                                }
                         }
                         goto default;
                     default:
@@ -297,6 +306,10 @@ namespace JLChnToZ.VRC.Foundation.I18N {
                     jsonWriter.WritePropertyName("_vrclang");
                     jsonWriter.Write(lang.vrcName);
                 }
+                if (!string.IsNullOrEmpty(lang.fallback)) {
+                    jsonWriter.WritePropertyName("_fallback");
+                    jsonWriter.Write(lang.fallback);
+                }
                 if (lang.timezones.Count > 0) {
                     jsonWriter.WritePropertyName("_timezone");
                     if (lang.timezones.Count == 1)
@@ -327,6 +340,7 @@ namespace JLChnToZ.VRC.Foundation.I18N {
     internal class LanguageEntry {
         public string name;
         public string vrcName;
+        public string fallback;
         public readonly List<string> timezones = new List<string>();
         public readonly Dictionary<string, string> languages = new Dictionary<string, string>();
     }
