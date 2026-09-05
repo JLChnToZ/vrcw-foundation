@@ -80,6 +80,7 @@
             #pragma fragment frag
             #pragma target 3.5
             #define TMPRO_SDF 1
+            #define _Cull _CullMode
             #include "./UI-Modified.cginc"
             ENDCG
         }

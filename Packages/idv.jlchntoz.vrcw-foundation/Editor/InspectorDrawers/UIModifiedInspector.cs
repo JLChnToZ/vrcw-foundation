@@ -79,7 +79,8 @@ namespace JLChnToZ.VRCW.Foundation.Editor {
 
             // Other Settings
             FindAndDrawProperty("_UseUIAlphaClip", "UIModified.UseAlphaClip");
-            FindAndDrawProperty("_Cull", "UIModified.CullMode");
+            if (!FindAndDrawProperty("_Cull", "UIModified.CullMode"))
+                FindAndDrawProperty("_CullMode", "UIModified.CullMode");
             FindAndDrawProperty("_ColorMask", "UIModified.ColorMask");
             FindAndDrawProperty("_StencilComp", "UIModified.Stencil.Comp");
             FindAndDrawProperty("_Stencil", "UIModified.Stencil.ID");
