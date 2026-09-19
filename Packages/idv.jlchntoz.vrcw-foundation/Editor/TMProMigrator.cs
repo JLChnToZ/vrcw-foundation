@@ -67,7 +67,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
             using (PooledObjectExtensions.Get(out Dictionary<Type, bool> migratableTypes))
             using (PooledObjectExtensions.Get(out Dictionary<Type, Dictionary<FieldInfo, FieldInfo>> migratableFields))
             using (PooledObjectExtensions.Get(out Dictionary<FieldInfo, TextMeshProUGUI> newCreated))
-            foreach (var monoBehaviour in root.GetComponentsInChildren<MonoBehaviour>(true)) {
+            foreach (var monoBehaviour in root.IterateAllComponents<MonoBehaviour>(true)) {
                 var type = monoBehaviour.GetType();
                 if (!migratableTypes.TryGetValue(type, out var isTypeMigratable))
                     migratableTypes[type] = isTypeMigratable = type.GetCustomAttribute<TMProMigratableAttribute>() != null;

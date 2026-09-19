@@ -5,13 +5,8 @@ using UnityEngine;
 using UnityEditor;
 using VRC.Core;
 using VRC.SDKBase;
-using JLChnToZ.VRC.Foundation.I18N;
-
-#if VRC_SDK_VRCSDK3
-using VRC.SDK3.Editor;
-#else
 using VRC.SDKBase.Editor;
-#endif
+using JLChnToZ.VRC.Foundation.I18N;
 
 namespace JLChnToZ.VRC.Foundation.Editors {
     /// <summary>
@@ -63,11 +58,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         }
 
         static void AddBuildHook(object sender, EventArgs e) {
-#if VRC_SDK_VRCSDK3
-            if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkWorldBuilderApi builder))
-#else
             if (VRCSdkControlPanel.TryGetBuilder(out IVRCSdkBuilderApi builder))
-#endif
                 builder.OnSdkBuildStart += OnBuildStarted;
             getTrustedUrlsTask.Task.Forget();
         }
@@ -75,11 +66,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         static void OnBuildStarted(object sender, object target) => getTrustedUrlsTask.Task.Forget();
 
         static GUIContent GetWarningContent(string tooltip) {
-            if (warningContent == null) {
-                warningContent = new GUIContent {
-                    image = EditorGUIUtility.IconContent("console.warnicon.sml").image
-                };
-            }
+            warningContent ??= new GUIContent(EditorGUIUtility.IconContent("console.warnicon.sml"));
             warningContent.tooltip = tooltip;
             return warningContent;
         }
@@ -169,11 +156,10 @@ namespace JLChnToZ.VRC.Foundation.Editors {
         /// <param name="rect">The rect of the field.</param>
         /// <param name="content">The label of the field.</param>
         public static void DrawUrlField(SerializedProperty urlProperty, TrustedUrlTypes urlTypes, Rect rect, GUIContent content = null) {
-            if (urlProperty.propertyType == SerializedPropertyType.Generic) // VRCUrl
-                urlProperty = urlProperty.FindPropertyRelative("url");
-            var url = urlProperty.stringValue;
+            var p = urlProperty.propertyType == SerializedPropertyType.Generic ? urlProperty.FindPropertyRelative("url") : urlProperty;
             using (var scope = new EditorGUI.PropertyScope(rect, content, urlProperty))
-                urlProperty.stringValue = DrawUrlField(url, urlTypes, rect, scope.content);
+                p.stringValue = DrawUrlField(p.stringValue, urlTypes, rect, scope.content);
+            if (p != urlProperty) p.Dispose();
         }
 
         /// <summary>
@@ -236,17 +222,18 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                     else { // Check domains.
                         var domainName = uri.Host;
                         if (!trustedDomains.TryGetValue(domainName, out var trusted)) {
+                            var domainNameSpan = domainName.AsSpan();
                             trusted = false;
-                            foreach (var trustedUrl in trustedUrls)
-                                if (trustedUrl.StartsWith("*.")) {
-                                    if (domainName.EndsWith(trustedUrl.Substring(2), StringComparison.OrdinalIgnoreCase)) {
-                                        trusted = true;
-                                        break;
-                                    }
-                                } else if (string.Equals(trustedUrl, domainName, StringComparison.OrdinalIgnoreCase)) {
+                            foreach (var trustedUrl in trustedUrls) {
+                                var trustedUrlSpan = trustedUrl.AsSpan();
+                                if ((trustedUrlSpan.Length >= 2 && trustedUrlSpan[0] == '*' && trustedUrlSpan[1] == '.') ? (
+                                    domainNameSpan.Equals(trustedUrlSpan[2..], StringComparison.OrdinalIgnoreCase) || // [example.com] == *.[example.com]
+                                    domainNameSpan.EndsWith(trustedUrlSpan[1..], StringComparison.OrdinalIgnoreCase) // subdomain[.example.com] == *[.example.com]
+                                    ) : domainNameSpan.Equals(trustedUrlSpan, StringComparison.OrdinalIgnoreCase)) { // [example.com] == [example.com]
                                     trusted = true;
                                     break;
                                 }
+                            }
                             trustedDomains[domainName] = trusted;
                         }
                         if (!trusted) invalidMessage = i18n.GetOrDefault("TrustedUrlUtils.url_not_trusted");
