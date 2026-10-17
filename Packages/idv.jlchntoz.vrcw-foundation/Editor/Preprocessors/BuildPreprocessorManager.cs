@@ -64,7 +64,7 @@ namespace JLChnToZ.VRC.Foundation.Editors {
                         UdonSharpEditorUtility.CopyProxyToUdon(usb);
 #endif
                 } catch (Exception e) {
-                    Debug.LogError($"Error while processing scene with {preprocessor.GetType().Name}: {e.Message}");
+                    Debug.LogError($"Error while processing scene with {preprocessor.GetType().Name}: {e.Message}\n{e.StackTrace}", preprocessor is UnityObject o ? o : null);
                 }
         }
 
