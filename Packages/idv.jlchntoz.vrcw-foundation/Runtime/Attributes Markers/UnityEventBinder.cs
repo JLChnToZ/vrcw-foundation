@@ -67,6 +67,8 @@ namespace JLChnToZ.VRC.Foundation {
 
         public override bool Equals(object obj) => obj is BindEventAttribute other && Equals(other);
 
+#if !COMPILER_UDONSHARP
         public override int GetHashCode() => HashCode.Combine(Source, Destination, SourceType);
+#endif
     }
 }
