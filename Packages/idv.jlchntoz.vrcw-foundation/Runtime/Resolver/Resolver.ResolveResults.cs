@@ -79,7 +79,11 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
                 this.from = from;
                 commands = resolver.commands;
                 count = commands.Length;
+#if COMPILER_UDONSHARP
+                states = new ICommandState[count];
+#else
                 states = ArrayPool<ICommandState>.Shared.Rent(count);
+#endif
                 for (int i = 0; i < count; i++)
                     states[i] = resolver.commands[i].CreateState();
                 depth = 0;
@@ -118,7 +122,9 @@ namespace JLChnToZ.VRC.Foundation.Resolvers {
             /// Dispose the enumerator. Release the resources.
             /// </summary>
             public void Dispose() {
+#if !COMPILER_UDONSHARP
                 ArrayPool<ICommandState>.Shared.Return(states);
+#endif
             }
         }
     }
